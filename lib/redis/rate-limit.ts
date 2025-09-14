@@ -3,29 +3,23 @@ import { REDIS_CONFIG } from "./config"
 
 export interface RateLimitResult {
   allowed: boolean
-  limit: number
   remaining: number
   resetTime: number
+  totalRequests: number
 }
 
-export interface RateLimitConfig {
-  windowMs: number
-  maxRequests: number
-  keyGenerator?: (identifier: string) => string
-}
-
-class RateLimiter {
-  private getKey(identifier: string, prefix = "default"): string {
-    return `${REDIS_CONFIG.keyPrefixes.rateLimit}${prefix}:${identifier}`
-  }
-
-  public async checkLimit(identifier: string, config: RateLimitConfig, prefix = "default"): Promise<RateLimitResult> {
+export const rateLimiter = {
+  async checkRateLimit(
+    identifier: string,
+    maxRequests: number = REDIS_CONFIG.rateLimit.maxRequests,
+    windowMs: number = REDIS_CONFIG.rateLimit.windowMs,
+  ): Promise<RateLimitResult> {
     if (!REDIS_CONFIG.features.enableRateLimit) {
       return {
         allowed: true,
-        limit: config.maxRequests,
-        remaining: config.maxRequests,
-        resetTime: Date.now() + config.windowMs,
+        remaining: maxRequests,
+        resetTime: Date.now() + windowMs,
+        totalRequests: 0,
       }
     }
 
@@ -34,129 +28,100 @@ class RateLimiter {
       if (!redis) {
         return {
           allowed: true,
-          limit: config.maxRequests,
-          remaining: config.maxRequests,
-          resetTime: Date.now() + config.windowMs,
+          remaining: maxRequests,
+          resetTime: Date.now() + windowMs,
+          totalRequests: 0,
         }
       }
 
-      const key = this.getKey(identifier, prefix)
+      const key = `${REDIS_CONFIG.keyPrefixes.rateLimit}${identifier}`
       const now = Date.now()
-      const windowStart = now - config.windowMs
+      const windowStart = now - windowMs
 
+      // Use Redis sorted set to track requests in time window
       await redis.zremrangebyscore(key, 0, windowStart)
       const currentRequests = await redis.zcard(key)
 
-      const allowed = currentRequests < config.maxRequests
-      const remaining = Math.max(0, config.maxRequests - currentRequests)
-      const resetTime = now + config.windowMs
+      if (currentRequests >= maxRequests) {
+        const resetTime = await redis.zrange(key, 0, 0, "WITHSCORES")
+        const oldestRequest = resetTime.length > 1 ? Number.parseInt(resetTime[1]) : now
 
-      if (allowed) {
-        await redis.zadd(key, now, now)
-        await redis.expire(key, Math.ceil(config.windowMs / 1000))
+        return {
+          allowed: false,
+          remaining: 0,
+          resetTime: oldestRequest + windowMs,
+          totalRequests: currentRequests,
+        }
       }
 
-      return {
-        allowed,
-        limit: config.maxRequests,
-        remaining: allowed ? remaining - 1 : remaining,
-        resetTime,
-      }
-    } catch (error) {
-      console.error("Rate limit check error:", error)
+      // Add current request
+      await redis.zadd(key, now, `${now}-${Math.random()}`)
+      await redis.expire(key, Math.ceil(windowMs / 1000))
+
       return {
         allowed: true,
-        limit: config.maxRequests,
-        remaining: config.maxRequests,
-        resetTime: Date.now() + config.windowMs,
+        remaining: maxRequests - currentRequests - 1,
+        resetTime: now + windowMs,
+        totalRequests: currentRequests + 1,
+      }
+    } catch (err) {
+      console.error("Rate limit check error:", err)
+      // Fail open - allow request if Redis is down
+      return {
+        allowed: true,
+        remaining: maxRequests,
+        resetTime: Date.now() + windowMs,
+        totalRequests: 0,
       }
     }
-  }
+  },
 
-  public readonly configs = {
-    login: {
-      windowMs: 15 * 60 * 1000,
-      maxRequests: 5,
-    },
-    signup: {
-      windowMs: 60 * 60 * 1000,
-      maxRequests: 3,
-    },
-    passwordReset: {
-      windowMs: 60 * 60 * 1000,
-      maxRequests: 3,
-    },
-    api: {
-      windowMs: 60 * 1000,
-      maxRequests: 60,
-    },
-    search: {
-      windowMs: 60 * 1000,
-      maxRequests: 30,
-    },
-  }
+  async resetRateLimit(identifier: string): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableRateLimit) return true
 
-  public async checkLoginLimit(identifier: string): Promise<RateLimitResult> {
-    return this.checkLimit(identifier, this.configs.login, "login")
-  }
-
-  public async checkSignupLimit(identifier: string): Promise<RateLimitResult> {
-    return this.checkLimit(identifier, this.configs.signup, "signup")
-  }
-
-  public async checkPasswordResetLimit(identifier: string): Promise<RateLimitResult> {
-    return this.checkLimit(identifier, this.configs.passwordReset, "password_reset")
-  }
-
-  public async checkApiLimit(identifier: string): Promise<RateLimitResult> {
-    return this.checkLimit(identifier, this.configs.api, "api")
-  }
-
-  public async checkSearchLimit(identifier: string): Promise<RateLimitResult> {
-    return this.checkLimit(identifier, this.configs.search, "search")
-  }
-
-  public async resetLimit(identifier: string, prefix = "default"): Promise<void> {
     try {
       const redis = await getRedis()
-      if (!redis) return
+      if (!redis) return false
 
-      const key = this.getKey(identifier, prefix)
+      const key = `${REDIS_CONFIG.keyPrefixes.rateLimit}${identifier}`
       await redis.del(key)
-    } catch (error) {
-      console.error("Failed to reset rate limit:", error)
+      return true
+    } catch (err) {
+      console.error("Rate limit reset error:", err)
+      return false
     }
-  }
+  },
 
-  public async getLimitInfo(
-    identifier: string,
-    config: RateLimitConfig,
-    prefix = "default",
-  ): Promise<{ current: number; limit: number; resetTime: number }> {
+  async getRateLimitInfo(identifier: string): Promise<{
+    requests: number
+    windowStart: number
+    windowEnd: number
+  }> {
+    if (!REDIS_CONFIG.features.enableRateLimit) {
+      return { requests: 0, windowStart: 0, windowEnd: 0 }
+    }
+
     try {
       const redis = await getRedis()
-      if (!redis) {
-        return { current: 0, limit: config.maxRequests, resetTime: Date.now() + config.windowMs }
-      }
+      if (!redis) return { requests: 0, windowStart: 0, windowEnd: 0 }
 
-      const key = this.getKey(identifier, prefix)
+      const key = `${REDIS_CONFIG.keyPrefixes.rateLimit}${identifier}`
       const now = Date.now()
-      const windowStart = now - config.windowMs
+      const windowStart = now - REDIS_CONFIG.rateLimit.windowMs
 
       await redis.zremrangebyscore(key, 0, windowStart)
-      const current = await redis.zcard(key)
+      const requests = await redis.zcard(key)
 
       return {
-        current,
-        limit: config.maxRequests,
-        resetTime: now + config.windowMs,
+        requests,
+        windowStart,
+        windowEnd: now,
       }
-    } catch (error) {
-      console.error("Failed to get rate limit info:", error)
-      return { current: 0, limit: config.maxRequests, resetTime: Date.now() + config.windowMs }
+    } catch (err) {
+      console.error("Rate limit info error:", err)
+      return { requests: 0, windowStart: 0, windowEnd: 0 }
     }
-  }
+  },
 }
 
-export const rateLimiter = new RateLimiter()
 export default rateLimiter

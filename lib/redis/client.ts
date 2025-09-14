@@ -1,4 +1,4 @@
-// Redis client with completely safe disabled mode - no static imports
+// Redis client with completely safe disabled mode - no imports at all
 let redis: any = null
 let isInitialized = false
 
@@ -16,8 +16,8 @@ export async function initializeRedis(): Promise<any> {
   }
 
   try {
-    // Dynamic import only when Redis is enabled - prevents build-time bundling
-    const { default: Redis } = await import("ioredis")
+    // Only import Redis if it's actually enabled
+    const Redis = (await import("ioredis")).default
 
     redis = new Redis(process.env.REDIS_URL!, {
       lazyConnect: true,

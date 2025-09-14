@@ -1,4 +1,4 @@
-import { supabase } from "./client"
+import { supabase, createClient } from "./client"
 import type { UserProfile } from "../enhanced-auth-context"
 
 export const enhancedSupabaseHelpers = {
@@ -164,5 +164,11 @@ export const enhancedSupabaseHelpers = {
     }
   },
 }
+
+// Export createClient for compatibility
+export { createClient }
+
+// Export the main client
+export { supabase }
 
 export default enhancedSupabaseHelpers

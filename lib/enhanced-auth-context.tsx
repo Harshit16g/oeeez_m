@@ -5,8 +5,6 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import type { User, Session, AuthError } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase/client"
 import { enhancedSupabaseHelpers } from "@/lib/supabase/enhanced-client"
-import { cacheManager } from "@/lib/redis/cache"
-import { sessionManager } from "@/lib/redis/session"
 import { toast } from "sonner"
 
 export interface UserProfile {
@@ -56,20 +54,12 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<AuthError | null>(null)
 
-  // Load user profile from cache or database
+  // Load user profile from database (no Redis caching for now)
   const loadUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
-      // Try to get from cache first
-      const cachedProfile = await cacheManager.getCachedUserProfile(userId)
-      if (cachedProfile) {
-        return cachedProfile
-      }
-
       // Fetch from database
       const profileData = await enhancedSupabaseHelpers.getUserProfile(userId)
       if (profileData) {
-        // Cache the profile
-        await cacheManager.cacheUserProfile(userId, profileData)
         return profileData as UserProfile
       }
 
@@ -106,16 +96,6 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           if (mounted) {
             setProfile(userProfile)
           }
-
-          // Create Redis session if enabled
-          try {
-            await sessionManager.createSession(initialSession.user.id, {
-              email: initialSession.user.email,
-              loginTime: new Date().toISOString(),
-            })
-          } catch (redisError) {
-            console.warn("Failed to create Redis session:", redisError)
-          }
         }
       } catch (err) {
         console.error("Auth initialization error:", err)
@@ -148,16 +128,6 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         const userProfile = await loadUserProfile(session.user.id)
         if (mounted) {
           setProfile(userProfile)
-        }
-
-        // Create Redis session if enabled
-        try {
-          await sessionManager.createSession(session.user.id, {
-            email: session.user.email,
-            loginTime: new Date().toISOString(),
-          })
-        } catch (redisError) {
-          console.warn("Failed to create Redis session:", redisError)
         }
       } else {
         setProfile(null)
@@ -239,16 +209,6 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       setLoading(true)
       setError(null)
 
-      // Clear cached profile and Redis session
-      if (user?.id) {
-        await cacheManager.invalidateUser(user.id)
-        try {
-          await sessionManager.deleteAllUserSessions(user.id)
-        } catch (redisError) {
-          console.warn("Failed to clean up Redis sessions:", redisError)
-        }
-      }
-
       const { error } = await supabase.auth.signOut()
 
       if (error) {
@@ -272,7 +232,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     } finally {
       setLoading(false)
     }
-  }, [user?.id])
+  }, [])
 
   // Reset password function
   const resetPassword = useCallback(async (email: string) => {
@@ -311,8 +271,6 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
 
         if (updatedProfile) {
           setProfile(updatedProfile as UserProfile)
-          // Update cache
-          await cacheManager.cacheUserProfile(user.id, updatedProfile)
           toast.success("Profile updated successfully!")
           return updatedProfile as UserProfile
         }
@@ -333,8 +291,6 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     if (!user?.id) return
 
     try {
-      // Clear cache and reload
-      await cacheManager.invalidateUser(user.id)
       const freshProfile = await loadUserProfile(user.id)
       setProfile(freshProfile)
     } catch (err) {
@@ -354,8 +310,6 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
 
         if (updatedProfile) {
           setProfile(updatedProfile as UserProfile)
-          // Update cache
-          await cacheManager.cacheUserProfile(user.id, updatedProfile)
           toast.success("Onboarding completed!")
           return true
         }

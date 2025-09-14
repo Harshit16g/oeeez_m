@@ -1,224 +1,141 @@
-import { safeGet, safeSet, safeDel, safeExists, safeKeys } from "./client"
+import { safeGet, safeSet, safeDel, safeExists } from "./client"
 import { REDIS_CONFIG } from "./config"
 
 export interface CacheOptions {
-  ttl?: keyof typeof REDIS_CONFIG.ttl | number
-  tags?: string[]
+  ttl?: number
   compress?: boolean
+  tags?: string[]
 }
 
-class CacheManager {
-  private getKey(key: string): string {
-    return `${REDIS_CONFIG.keyPrefixes.cache}${key}`
-  }
+export const cacheManager = {
+  // User profile caching
+  async getCachedUserProfile(userId: string): Promise<any> {
+    if (!REDIS_CONFIG.features.enableCache) return null
 
-  private getTagKey(tag: string): string {
-    return `${REDIS_CONFIG.keyPrefixes.tag}${tag}`
-  }
+    const key = `${REDIS_CONFIG.keyPrefixes.cache}user_profile:${userId}`
+    return await safeGet(key)
+  },
 
-  private getTTL(ttl?: keyof typeof REDIS_CONFIG.ttl | number): number {
-    if (typeof ttl === "number") {
-      return ttl
-    }
-    if (typeof ttl === "string" && ttl in REDIS_CONFIG.ttl) {
-      return REDIS_CONFIG.ttl[ttl]
-    }
-    return REDIS_CONFIG.ttl.mediumCache
-  }
+  async cacheUserProfile(userId: string, profile: any, ttl?: number): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableCache) return false
 
-  public async set(key: string, value: any, options: CacheOptions = {}): Promise<void> {
-    if (!REDIS_CONFIG.features.enableCache) {
-      return
-    }
+    const key = `${REDIS_CONFIG.keyPrefixes.cache}user_profile:${userId}`
+    return await safeSet(key, profile, ttl || REDIS_CONFIG.ttl.userProfile)
+  },
 
-    try {
-      const cacheKey = this.getKey(key)
-      const ttl = this.getTTL(options.ttl)
+  async invalidateUserProfile(userId: string): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableCache) return false
 
-      await safeSet(cacheKey, value, ttl)
+    const key = `${REDIS_CONFIG.keyPrefixes.cache}user_profile:${userId}`
+    return await safeDel(key)
+  },
 
-      if (options.tags && options.tags.length > 0) {
-        for (const tag of options.tags) {
-          const tagKey = this.getTagKey(tag)
-          const existingKeys = (await safeGet(tagKey)) || []
-          if (!existingKeys.includes(cacheKey)) {
-            existingKeys.push(cacheKey)
-            await safeSet(tagKey, existingKeys, ttl + 3600)
-          }
-        }
-      }
+  // Artist listings caching
+  async getCachedArtists(filters?: any): Promise<any> {
+    if (!REDIS_CONFIG.features.enableCache) return null
 
-      console.log(`📦 Cached: ${key} (TTL: ${ttl}s)`)
-    } catch (error) {
-      console.error(`Failed to cache ${key}:`, error)
-    }
-  }
+    const filterKey = filters ? JSON.stringify(filters) : "all"
+    const key = `${REDIS_CONFIG.keyPrefixes.cache}artists:${filterKey}`
+    return await safeGet(key)
+  },
 
-  public async get<T = any>(key: string): Promise<T | null> {
-    if (!REDIS_CONFIG.features.enableCache) {
-      return null
-    }
+  async cacheArtists(artists: any[], filters?: any, ttl?: number): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableCache) return false
 
-    try {
-      const cacheKey = this.getKey(key)
-      const value = await safeGet<T>(cacheKey)
+    const filterKey = filters ? JSON.stringify(filters) : "all"
+    const key = `${REDIS_CONFIG.keyPrefixes.cache}artists:${filterKey}`
+    return await safeSet(key, artists, ttl || REDIS_CONFIG.ttl.cache)
+  },
 
-      if (value) {
-        console.log(`🎯 Cache hit: ${key}`)
-      } else {
-        console.log(`❌ Cache miss: ${key}`)
-      }
+  async invalidateArtists(): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableCache) return false
 
-      return value
-    } catch (error) {
-      console.error(`Failed to get cached ${key}:`, error)
-      return null
-    }
-  }
+    const pattern = `${REDIS_CONFIG.keyPrefixes.cache}artists:*`
+    // Note: In production, you'd want to use SCAN instead of KEYS
+    const keys = await safeGet(pattern) // This would need to be implemented with SCAN
+    return keys ? await safeDel(keys) : false
+  },
 
-  public async del(key: string | string[]): Promise<void> {
-    try {
-      const keys = Array.isArray(key) ? key.map((k) => this.getKey(k)) : [this.getKey(key)]
-      await safeDel(keys)
+  // Generic caching methods
+  async get(key: string): Promise<any> {
+    if (!REDIS_CONFIG.features.enableCache) return null
 
-      console.log(`🗑️ Cache deleted: ${Array.isArray(key) ? key.join(", ") : key}`)
-    } catch (error) {
-      console.error(`Failed to delete cached ${key}:`, error)
-    }
-  }
+    const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
+    return await safeGet(fullKey)
+  },
 
-  public async delByTag(tag: string): Promise<void> {
-    try {
-      const tagKey = this.getTagKey(tag)
-      const keys = (await safeGet(tagKey)) || []
+  async set(key: string, value: any, options: CacheOptions = {}): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableCache) return false
 
-      if (keys.length > 0) {
-        await safeDel(keys)
-        await safeDel(tagKey)
-        console.log(`🏷️ Cache deleted by tag '${tag}': ${keys.length} items`)
-      }
-    } catch (error) {
-      console.error(`Failed to delete cache by tag ${tag}:`, error)
-    }
-  }
+    const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
+    const ttl = options.ttl || REDIS_CONFIG.ttl.cache
+    return await safeSet(fullKey, value, ttl)
+  },
 
-  public async exists(key: string): Promise<boolean> {
-    try {
-      const cacheKey = this.getKey(key)
-      return await safeExists(cacheKey)
-    } catch (error) {
-      console.error(`Failed to check cache existence for ${key}:`, error)
-      return false
-    }
-  }
+  async del(key: string): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableCache) return false
 
-  public async clear(): Promise<void> {
-    try {
-      const pattern = `${REDIS_CONFIG.keyPrefixes.cache}*`
-      const keys = await safeKeys(pattern)
+    const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
+    return await safeDel(fullKey)
+  },
 
-      if (keys.length > 0) {
-        await safeDel(keys)
-        console.log(`🧹 Cache cleared: ${keys.length} items`)
-      }
-    } catch (error) {
-      console.error("Failed to clear cache:", error)
-    }
-  }
+  async exists(key: string): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableCache) return false
 
-  public async getOrSet<T>(key: string, fetchFn: () => Promise<T>, options: CacheOptions = {}): Promise<T> {
-    try {
-      const cached = await this.get<T>(key)
-      if (cached !== null) {
-        return cached
-      }
+    const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
+    return await safeExists(fullKey)
+  },
 
-      const value = await fetchFn()
-      await this.set(key, value, options)
-      return value
-    } catch (error) {
-      console.error(`Failed to get or set cache for ${key}:`, error)
-      return await fetchFn()
-    }
-  }
+  // User-specific cache invalidation
+  async invalidateUser(userId: string): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableCache) return false
 
-  // User-specific cache methods
-  public async cacheUserProfile(userId: string, profile: any): Promise<void> {
-    await this.set(`user:profile:${userId}`, profile, {
-      ttl: "userProfile",
-      tags: ["user", `user:${userId}`],
-    })
-  }
+    const keys = [
+      `${REDIS_CONFIG.keyPrefixes.cache}user_profile:${userId}`,
+      `${REDIS_CONFIG.keyPrefixes.cache}user_bookings:${userId}`,
+      `${REDIS_CONFIG.keyPrefixes.cache}user_notifications:${userId}`,
+    ]
 
-  public async getCachedUserProfile(userId: string): Promise<any> {
-    return await this.get(`user:profile:${userId}`)
-  }
+    return await safeDel(keys)
+  },
 
-  public async invalidateUser(userId: string): Promise<void> {
-    await this.delByTag(`user:${userId}`)
-  }
+  // Analytics caching
+  async getCachedAnalytics(key: string): Promise<any> {
+    if (!REDIS_CONFIG.features.enableCache) return null
 
-  // Artist-specific cache methods
-  public async cacheArtist(artistId: string, artist: any): Promise<void> {
-    await this.set(`artist:${artistId}`, artist, {
-      ttl: "artistData",
-      tags: ["artist", `artist:${artistId}`],
-    })
-  }
+    const fullKey = `${REDIS_CONFIG.keyPrefixes.analytics}${key}`
+    return await safeGet(fullKey)
+  },
 
-  public async getCachedArtist(artistId: string): Promise<any> {
-    return await this.get(`artist:${artistId}`)
-  }
+  async cacheAnalytics(key: string, data: any): Promise<boolean> {
+    if (!REDIS_CONFIG.features.enableCache) return false
 
-  public async invalidateArtist(artistId: string): Promise<void> {
-    await this.delByTag(`artist:${artistId}`)
-  }
+    const fullKey = `${REDIS_CONFIG.keyPrefixes.analytics}${key}`
+    return await safeSet(fullKey, data, REDIS_CONFIG.ttl.analytics)
+  },
 
-  // Search cache methods
-  public async cacheSearch(query: string, results: any, ttl = "shortCache"): Promise<void> {
-    const searchKey = `search:${Buffer.from(query).toString("base64")}`
-    await this.set(searchKey, results, {
-      ttl,
-      tags: ["search"],
-    })
-  }
+  // Cache warming
+  async warmCache(): Promise<void> {
+    if (!REDIS_CONFIG.features.enableCache) return
 
-  public async getCachedSearch(query: string): Promise<any> {
-    const searchKey = `search:${Buffer.from(query).toString("base64")}`
-    return await this.get(searchKey)
-  }
+    console.log("🔥 Warming cache...")
+    // Implement cache warming logic here
+    // This could pre-load frequently accessed data
+  },
 
-  public async invalidateSearch(): Promise<void> {
-    await this.delByTag("search")
-  }
-
-  // Statistics and monitoring
-  public async getStats(): Promise<{
+  // Cache statistics
+  async getCacheStats(): Promise<{
     totalKeys: number
-    cacheHits: number
-    cacheMisses: number
-    memoryUsage?: string
+    memoryUsage: string
+    hitRate: number
   }> {
-    try {
-      const cacheKeys = await safeKeys(`${REDIS_CONFIG.keyPrefixes.cache}*`)
-
-      return {
-        totalKeys: cacheKeys.length,
-        cacheHits: 0,
-        cacheMisses: 0,
-        memoryUsage: "N/A",
-      }
-    } catch (error) {
-      console.error("Failed to get cache stats:", error)
-      return {
-        totalKeys: 0,
-        cacheHits: 0,
-        cacheMisses: 0,
-        memoryUsage: "Error",
-      }
+    if (!REDIS_CONFIG.features.enableCache) {
+      return { totalKeys: 0, memoryUsage: "0B", hitRate: 0 }
     }
-  }
+
+    // This would need to be implemented with Redis INFO commands
+    return { totalKeys: 0, memoryUsage: "0B", hitRate: 0 }
+  },
 }
 
-export const cacheManager = new CacheManager()
 export default cacheManager

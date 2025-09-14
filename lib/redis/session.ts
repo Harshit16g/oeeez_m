@@ -210,7 +210,7 @@ export const sessionManager = {
         const ttl = await redis.ttl(key)
         if (ttl > 0) {
           activeSessions++
-        } else if (ttl === -1) {
+        } else if (ttl === -2) {
           expiredSessions++
         }
       }

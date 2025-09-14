@@ -1,40 +1,27 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { cacheManager } from "@/lib/redis/cache"
+import { NextResponse } from "next/server"
+import { clearCache } from "@/lib/redis/cache"
 
-export async function POST(request: NextRequest) {
+export const runtime = "nodejs"
+
+export async function POST(request: Request) {
   try {
-    const { key, pattern } = await request.json()
+    const { pattern } = await request.json().catch(() => ({}))
 
-    if (key) {
-      const success = await cacheManager.del(key)
-      return NextResponse.json({
-        success,
-        message: success ? `Cache key '${key}' cleared` : `Failed to clear cache key '${key}'`,
-      })
-    }
+    const clearedCount = await clearCache(pattern)
 
-    if (pattern) {
-      // For now, just return a message since we don't have pattern deletion implemented
-      return NextResponse.json({
-        success: false,
-        message: "Pattern-based cache clearing not implemented yet",
-      })
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Please provide either 'key' or 'pattern' parameter",
-      },
-      { status: 400 },
-    )
+    return NextResponse.json({
+      success: true,
+      message: `Cleared ${clearedCount} cache entries`,
+      pattern: pattern || "*",
+      count: clearedCount,
+      timestamp: new Date().toISOString(),
+    })
   } catch (error) {
-    console.error("Cache clear failed:", error)
-
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        message: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )

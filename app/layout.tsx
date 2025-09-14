@@ -56,18 +56,6 @@ export const metadata: Metadata = {
   generator: "v0.app",
 }
 
-// Safe Redis initialization only on server side
-if (typeof window === "undefined") {
-  // Dynamic import to avoid bundling Redis in client-side code
-  import("@/lib/redis/client")
-    .then(({ initializeRedis }) => {
-      initializeRedis()
-    })
-    .catch(() => {
-      console.log("Redis not available, continuing without caching")
-    })
-}
-
 export default function RootLayout({
   children,
 }: {

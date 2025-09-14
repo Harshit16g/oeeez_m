@@ -1,141 +1,150 @@
-import { safeGet, safeSet, safeDel, safeExists } from "./client"
-import { REDIS_CONFIG } from "./config"
+import { getRedis, isRedisEnabled } from "./client"
+import { REDIS_CONFIG, CACHE_KEYS } from "./config"
+
+export const runtime = "nodejs"
 
 export interface CacheOptions {
   ttl?: number
   compress?: boolean
-  tags?: string[]
 }
 
-export const cacheManager = {
-  // User profile caching
-  async getCachedUserProfile(userId: string): Promise<any> {
-    if (!REDIS_CONFIG.features.enableCache) return null
+export async function setCache(key: string, value: any, options: CacheOptions = {}): Promise<boolean> {
+  if (!isRedisEnabled) {
+    return false
+  }
 
-    const key = `${REDIS_CONFIG.keyPrefixes.cache}user_profile:${userId}`
-    return await safeGet(key)
-  },
+  try {
+    const redis = await getRedis()
+    if (!redis) return false
 
-  async cacheUserProfile(userId: string, profile: any, ttl?: number): Promise<boolean> {
-    if (!REDIS_CONFIG.features.enableCache) return false
+    const ttl = options.ttl || REDIS_CONFIG.DEFAULT_TTL
+    let serializedValue = JSON.stringify(value)
 
-    const key = `${REDIS_CONFIG.keyPrefixes.cache}user_profile:${userId}`
-    return await safeSet(key, profile, ttl || REDIS_CONFIG.ttl.userProfile)
-  },
-
-  async invalidateUserProfile(userId: string): Promise<boolean> {
-    if (!REDIS_CONFIG.features.enableCache) return false
-
-    const key = `${REDIS_CONFIG.keyPrefixes.cache}user_profile:${userId}`
-    return await safeDel(key)
-  },
-
-  // Artist listings caching
-  async getCachedArtists(filters?: any): Promise<any> {
-    if (!REDIS_CONFIG.features.enableCache) return null
-
-    const filterKey = filters ? JSON.stringify(filters) : "all"
-    const key = `${REDIS_CONFIG.keyPrefixes.cache}artists:${filterKey}`
-    return await safeGet(key)
-  },
-
-  async cacheArtists(artists: any[], filters?: any, ttl?: number): Promise<boolean> {
-    if (!REDIS_CONFIG.features.enableCache) return false
-
-    const filterKey = filters ? JSON.stringify(filters) : "all"
-    const key = `${REDIS_CONFIG.keyPrefixes.cache}artists:${filterKey}`
-    return await safeSet(key, artists, ttl || REDIS_CONFIG.ttl.cache)
-  },
-
-  async invalidateArtists(): Promise<boolean> {
-    if (!REDIS_CONFIG.features.enableCache) return false
-
-    const pattern = `${REDIS_CONFIG.keyPrefixes.cache}artists:*`
-    // Note: In production, you'd want to use SCAN instead of KEYS
-    const keys = await safeGet(pattern) // This would need to be implemented with SCAN
-    return keys ? await safeDel(keys) : false
-  },
-
-  // Generic caching methods
-  async get(key: string): Promise<any> {
-    if (!REDIS_CONFIG.features.enableCache) return null
-
-    const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
-    return await safeGet(fullKey)
-  },
-
-  async set(key: string, value: any, options: CacheOptions = {}): Promise<boolean> {
-    if (!REDIS_CONFIG.features.enableCache) return false
-
-    const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
-    const ttl = options.ttl || REDIS_CONFIG.ttl.cache
-    return await safeSet(fullKey, value, ttl)
-  },
-
-  async del(key: string): Promise<boolean> {
-    if (!REDIS_CONFIG.features.enableCache) return false
-
-    const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
-    return await safeDel(fullKey)
-  },
-
-  async exists(key: string): Promise<boolean> {
-    if (!REDIS_CONFIG.features.enableCache) return false
-
-    const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
-    return await safeExists(fullKey)
-  },
-
-  // User-specific cache invalidation
-  async invalidateUser(userId: string): Promise<boolean> {
-    if (!REDIS_CONFIG.features.enableCache) return false
-
-    const keys = [
-      `${REDIS_CONFIG.keyPrefixes.cache}user_profile:${userId}`,
-      `${REDIS_CONFIG.keyPrefixes.cache}user_bookings:${userId}`,
-      `${REDIS_CONFIG.keyPrefixes.cache}user_notifications:${userId}`,
-    ]
-
-    return await safeDel(keys)
-  },
-
-  // Analytics caching
-  async getCachedAnalytics(key: string): Promise<any> {
-    if (!REDIS_CONFIG.features.enableCache) return null
-
-    const fullKey = `${REDIS_CONFIG.keyPrefixes.analytics}${key}`
-    return await safeGet(fullKey)
-  },
-
-  async cacheAnalytics(key: string, data: any): Promise<boolean> {
-    if (!REDIS_CONFIG.features.enableCache) return false
-
-    const fullKey = `${REDIS_CONFIG.keyPrefixes.analytics}${key}`
-    return await safeSet(fullKey, data, REDIS_CONFIG.ttl.analytics)
-  },
-
-  // Cache warming
-  async warmCache(): Promise<void> {
-    if (!REDIS_CONFIG.features.enableCache) return
-
-    console.log("🔥 Warming cache...")
-    // Implement cache warming logic here
-    // This could pre-load frequently accessed data
-  },
-
-  // Cache statistics
-  async getCacheStats(): Promise<{
-    totalKeys: number
-    memoryUsage: string
-    hitRate: number
-  }> {
-    if (!REDIS_CONFIG.features.enableCache) {
-      return { totalKeys: 0, memoryUsage: "0B", hitRate: 0 }
+    // Compress large values
+    if (options.compress && serializedValue.length > REDIS_CONFIG.COMPRESSION_THRESHOLD) {
+      const zlib = await import("zlib")
+      serializedValue = zlib.gzipSync(serializedValue).toString("base64")
+      key = `compressed:${key}`
     }
 
-    // This would need to be implemented with Redis INFO commands
-    return { totalKeys: 0, memoryUsage: "0B", hitRate: 0 }
-  },
+    await redis.setex(key, ttl, serializedValue)
+
+    // Update cache stats
+    if (REDIS_CONFIG.METRICS) {
+      await redis.hincrby(CACHE_KEYS.CACHE_STATS, "sets", 1)
+    }
+
+    return true
+  } catch (error) {
+    console.error("Failed to set cache:", error)
+    return false
+  }
 }
 
-export default cacheManager
+export async function getCache<T = any>(key: string): Promise<T | null> {
+  if (!isRedisEnabled) {
+    return null
+  }
+
+  try {
+    const redis = await getRedis()
+    if (!redis) return null
+
+    // Check for compressed version first
+    let value = await redis.get(`compressed:${key}`)
+    let isCompressed = true
+
+    if (!value) {
+      value = await redis.get(key)
+      isCompressed = false
+    }
+
+    if (!value) {
+      if (REDIS_CONFIG.METRICS) {
+        await redis.hincrby(CACHE_KEYS.CACHE_STATS, "misses", 1)
+      }
+      return null
+    }
+
+    // Decompress if needed
+    if (isCompressed) {
+      const zlib = await import("zlib")
+      value = zlib.gunzipSync(Buffer.from(value, "base64")).toString()
+    }
+
+    if (REDIS_CONFIG.METRICS) {
+      await redis.hincrby(CACHE_KEYS.CACHE_STATS, "hits", 1)
+    }
+
+    return JSON.parse(value)
+  } catch (error) {
+    console.error("Failed to get cache:", error)
+    return null
+  }
+}
+
+export async function deleteCache(key: string): Promise<boolean> {
+  if (!isRedisEnabled) {
+    return true
+  }
+
+  try {
+    const redis = await getRedis()
+    if (!redis) return true
+
+    await redis.del(key)
+    await redis.del(`compressed:${key}`)
+
+    if (REDIS_CONFIG.METRICS) {
+      await redis.hincrby(CACHE_KEYS.CACHE_STATS, "deletes", 1)
+    }
+
+    return true
+  } catch (error) {
+    console.error("Failed to delete cache:", error)
+    return true
+  }
+}
+
+export async function clearCache(pattern?: string): Promise<number> {
+  if (!isRedisEnabled) {
+    return 0
+  }
+
+  try {
+    const redis = await getRedis()
+    if (!redis) return 0
+
+    const searchPattern = pattern || "*"
+    const keys = await redis.keys(searchPattern)
+
+    if (keys.length === 0) return 0
+
+    await redis.del(...keys)
+
+    if (REDIS_CONFIG.METRICS) {
+      await redis.hincrby(CACHE_KEYS.CACHE_STATS, "clears", 1)
+    }
+
+    return keys.length
+  } catch (error) {
+    console.error("Failed to clear cache:", error)
+    return 0
+  }
+}
+
+export async function getCacheStats(): Promise<Record<string, string> | null> {
+  if (!isRedisEnabled || !REDIS_CONFIG.METRICS) {
+    return null
+  }
+
+  try {
+    const redis = await getRedis()
+    if (!redis) return null
+
+    return await redis.hgetall(CACHE_KEYS.CACHE_STATS)
+  } catch (error) {
+    console.error("Failed to get cache stats:", error)
+    return null
+  }
+}

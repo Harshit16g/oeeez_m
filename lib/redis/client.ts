@@ -1,25 +1,42 @@
 // Redis client with completely safe disabled mode - no imports at all
-let redis: any = null
+let redisInstance: any = null
 let isInitialized = false
 
-const isRedisEnabled = (): boolean => {
-  return process.env.ENABLE_REDIS_CACHE === "true" && !!process.env.REDIS_URL
+export const runtime = "nodejs"
+
+const isRedisEnabled = process.env.ENABLE_REDIS_CACHE === "true"
+const isRateLimitEnabled = process.env.ENABLE_RATE_LIMITING === "true"
+const isSessionEnabled = process.env.ENABLE_REDIS_SESSIONS === "true"
+
+const isRedisAvailable = (): boolean => {
+  return isRedisEnabled && redisInstance !== null
 }
 
 export async function initializeRedis(): Promise<any> {
-  if (isInitialized) return redis
+  if (isInitialized) return redisInstance
 
-  if (!isRedisEnabled()) {
+  if (!isRedisEnabled) {
     console.log("⚠️ Redis disabled via environment variables")
     isInitialized = true
     return null
+  }
+
+  if (typeof window !== "undefined") {
+    // Don't initialize Redis on client side
+    return
   }
 
   try {
     // Only import Redis if it's actually enabled
     const Redis = (await import("ioredis")).default
 
-    redis = new Redis(process.env.REDIS_URL!, {
+    const redisUrl = process.env.REDIS_URL
+    if (!redisUrl || redisUrl.includes("your_redis_connection_string")) {
+      console.log("Redis URL not configured, running without Redis")
+      return null
+    }
+
+    redisInstance = new Redis(redisUrl, {
       lazyConnect: true,
       maxRetriesPerRequest: Number(process.env.REDIS_MAX_RETRIES ?? 3),
       connectTimeout: Number(process.env.REDIS_CONNECT_TIMEOUT ?? 10000),
@@ -27,16 +44,19 @@ export async function initializeRedis(): Promise<any> {
       keepAlive: process.env.REDIS_KEEP_ALIVE === "true",
       enableReadyCheck: process.env.REDIS_READY_CHECK !== "false",
       retryStrategy: (times: number) => Math.min(times * 200, 2000),
+      retryDelayOnFailover: 100,
     })
 
-    redis.on("connect", () => console.log("✅ Redis connected"))
-    redis.on("ready", () => console.log("✅ Redis ready"))
-    redis.on("error", (err: Error) => console.error("❌ Redis error:", err.message))
-    redis.on("close", () => console.log("⚠️ Redis connection closed"))
-    redis.on("reconnecting", () => console.log("🔄 Redis reconnecting..."))
+    redisInstance.on("connect", () => console.log("✅ Redis connected"))
+    redisInstance.on("ready", () => console.log("✅ Redis ready"))
+    redisInstance.on("error", (err: Error) => console.error("❌ Redis error:", err.message))
+    redisInstance.on("close", () => console.log("⚠️ Redis connection closed"))
+    redisInstance.on("reconnecting", () => console.log("🔄 Redis reconnecting..."))
 
+    await redisInstance.ping()
+    console.log("Redis connected successfully")
     isInitialized = true
-    return redis
+    return redisInstance
   } catch (err) {
     console.error("❌ Redis initialization failed:", err)
     isInitialized = true
@@ -48,12 +68,12 @@ export async function getRedis(): Promise<any> {
   if (!isInitialized) {
     return await initializeRedis()
   }
-  return redis
+  return redisInstance
 }
 
 // Safe Redis operations that work when disabled
 export async function safeGet(key: string): Promise<any> {
-  if (!isRedisEnabled()) return null
+  if (!isRedisEnabled) return null
 
   try {
     const client = await getRedis()
@@ -68,7 +88,7 @@ export async function safeGet(key: string): Promise<any> {
 }
 
 export async function safeSet(key: string, value: any, ttl?: number): Promise<boolean> {
-  if (!isRedisEnabled()) return false
+  if (!isRedisEnabled) return false
 
   try {
     const client = await getRedis()
@@ -89,7 +109,7 @@ export async function safeSet(key: string, value: any, ttl?: number): Promise<bo
 }
 
 export async function safeDel(key: string | string[]): Promise<boolean> {
-  if (!isRedisEnabled()) return false
+  if (!isRedisEnabled) return false
 
   try {
     const client = await getRedis()
@@ -108,7 +128,7 @@ export async function safeDel(key: string | string[]): Promise<boolean> {
 }
 
 export async function safeExists(key: string): Promise<boolean> {
-  if (!isRedisEnabled()) return false
+  if (!isRedisEnabled) return false
 
   try {
     const client = await getRedis()
@@ -123,7 +143,7 @@ export async function safeExists(key: string): Promise<boolean> {
 }
 
 export async function safeExpire(key: string, ttl: number): Promise<boolean> {
-  if (!isRedisEnabled()) return false
+  if (!isRedisEnabled) return false
 
   try {
     const client = await getRedis()
@@ -138,7 +158,7 @@ export async function safeExpire(key: string, ttl: number): Promise<boolean> {
 }
 
 export async function safeKeys(pattern: string): Promise<string[]> {
-  if (!isRedisEnabled()) return []
+  if (!isRedisEnabled) return []
 
   try {
     const client = await getRedis()
@@ -156,7 +176,7 @@ export async function healthCheck(): Promise<{
   latency?: number
   error?: string
 }> {
-  if (!isRedisEnabled()) {
+  if (!isRedisEnabled) {
     return { status: "disabled" }
   }
 
@@ -180,15 +200,17 @@ export async function healthCheck(): Promise<{
 }
 
 export async function shutdownRedis(): Promise<void> {
-  if (redis) {
+  if (redisInstance) {
     try {
-      await redis.quit()
-      redis = null
+      await redisInstance.quit()
+      redisInstance = null
       console.log("✅ Redis shutdown completed")
     } catch (err) {
       console.error("❌ Redis shutdown failed:", err)
     }
   }
 }
+
+export { isRedisEnabled, isRateLimitEnabled, isSessionEnabled }
 
 export default getRedis

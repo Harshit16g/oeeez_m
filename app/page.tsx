@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Sparkles, Music, Users, Calendar, Star } from "lucide-react"
 import { AnimatedCard } from "@/components/animated-card"
 import { OnboardingFlow } from "@/components/onboarding-flow"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 
 export default function HomePage() {
   const { user, profile, loading } = useAuth()

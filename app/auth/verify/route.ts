@@ -1,51 +1,45 @@
-import { createClient } from "@/lib/supabase/server"
-import { NextResponse } from "next/server"
+"use client"
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
-  const token_hash = searchParams.get("token_hash")
-  const token = searchParams.get("token")
-  const type = searchParams.get("type")
+import { useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { EnhancedAuthProvider, useAuth } from "@/lib/enhanced-auth-context"
+
+export default function VerifySuccessPageWrapper() {
+  // Wrap the inner page with EnhancedAuthProvider
+  return (
+    <EnhancedAuthProvider>
+      <VerifySuccessPage />
+    </EnhancedAuthProvider>
+  )
+}
+
+function VerifySuccessPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const next = searchParams.get("next") ?? "/"
+  const { user, loading } = useAuth()
 
-  const supabase = await createClient()
-
-  // Handle token_hash (legacy flow)
-  if (token_hash && type) {
-    const { error } = await supabase.auth.verifyOtp({
-      type: type as any,
-      token_hash,
-    })
-
-    if (!error) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+  useEffect(() => {
+    if (!loading) {
+      // Redirect authenticated users to the intended page
       if (user) {
-        await supabase.rpc("create_sample_notifications", { user_id: user.id })
+        router.push(next)
+      } else {
+        // If somehow no user is present, fallback to login
+        router.push("/login")
       }
-      return NextResponse.redirect(`${origin}/auth/verify-success?next=${encodeURIComponent(next)}`)
     }
-  }
+  }, [loading, user, router, next])
 
-  // Handle token (PKCE flow)
-  if (token && type) {
-    const { error } = await supabase.auth.verifyOtp({
-      type: type as any,
-      token,
-    })
-
-    if (!error) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (user) {
-        await supabase.rpc("create_sample_notifications", { user_id: user.id })
-      }
-      return NextResponse.redirect(`${origin}/auth/verify-success?next=${encodeURIComponent(next)}`)
-    }
-  }
-
-  // Return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/verify-error`)
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 text-center p-4">
+      <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-purple-600 mb-6"></div>
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        Verifying your account...
+      </h1>
+      <p className="text-gray-700 dark:text-gray-300">
+        Please wait while we redirect you to your dashboard.
+      </p>
+    </div>
+  )
 }

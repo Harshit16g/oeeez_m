@@ -1,37 +1,38 @@
 export const runtime = "nodejs"
 
 import { getRedis, isRedisEnabled } from "./client"
-
-// Cache TTL configuration (in seconds)
-const CACHE_TTL = {
-  shortCache: Number(process.env.CACHE_TTL_SHORT ?? 300), // 5 minutes
-  mediumCache: Number(process.env.CACHE_TTL_MEDIUM ?? 1800), // 30 minutes
-  longCache: Number(process.env.CACHE_TTL_LONG ?? 7200), // 2 hours
-  userProfile: Number(process.env.CACHE_TTL_USER_PROFILE ?? 3600), // 1 hour
-  artistData: Number(process.env.CACHE_TTL_ARTIST_DATA ?? 1800), // 30 minutes
-  notifications: Number(process.env.CACHE_TTL_NOTIFICATIONS ?? 300), // 5 minutes
-}
-
-// Cache key prefixes
-const CACHE_PREFIX = process.env.REDIS_CACHE_PREFIX || "cache:"
-const TAG_PREFIX = process.env.REDIS_TAG_PREFIX || "tag:"
+import { REDIS_CONFIG } from "./config"
 
 export interface CacheOptions {
-  ttl?: keyof typeof CACHE_TTL | number
+  ttl?: number
   tags?: string[]
+  compress?: boolean
+}
+
+export interface CacheStats {
+  totalKeys: number
+  cacheKeys: number
+  sessionKeys: number
+  rateLimitKeys: number
+  memoryUsage?: string
+  hitRate?: number
 }
 
 export const cacheManager = {
   // Basic cache operations
-  async get(key: string): Promise<any> {
+  async get<T = any>(key: string): Promise<T | null> {
     if (!isRedisEnabled()) return null
 
     try {
       const redis = getRedis()
       if (!redis) return null
 
-      const data = await redis.get(`${CACHE_PREFIX}${key}`)
-      return data ? JSON.parse(data) : null
+      const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
+      const value = await redis.get(fullKey)
+
+      if (!value) return null
+
+      return JSON.parse(value) as T
     } catch (err) {
       console.error("Cache GET error:", err)
       return null
@@ -45,28 +46,19 @@ export const cacheManager = {
       const redis = getRedis()
       if (!redis) return false
 
-      const cacheKey = `${CACHE_PREFIX}${key}`
+      const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
       const serializedValue = JSON.stringify(value)
+      const ttl = options.ttl || REDIS_CONFIG.ttl.medium
 
-      // Determine TTL
-      let ttl: number
-      if (typeof options.ttl === "number") {
-        ttl = options.ttl
-      } else if (options.ttl && typeof options.ttl === "string") {
-        ttl = CACHE_TTL[options.ttl] || CACHE_TTL.mediumCache
-      } else {
-        ttl = CACHE_TTL.mediumCache
-      }
-
-      // Set the cache entry
-      await redis.setex(cacheKey, ttl, serializedValue)
+      // Set the main cache entry
+      await redis.setex(fullKey, ttl, serializedValue)
 
       // Handle tags for cache invalidation
       if (options.tags && options.tags.length > 0) {
         for (const tag of options.tags) {
-          const tagKey = `${TAG_PREFIX}${tag}`
-          await redis.sadd(tagKey, cacheKey)
-          await redis.expire(tagKey, ttl + 300) // Tag expires 5 minutes after cache
+          const tagKey = `${REDIS_CONFIG.keyPrefixes.tag}${tag}`
+          await redis.sadd(tagKey, fullKey)
+          await redis.expire(tagKey, ttl)
         }
       }
 
@@ -84,7 +76,8 @@ export const cacheManager = {
       const redis = getRedis()
       if (!redis) return false
 
-      await redis.del(`${CACHE_PREFIX}${key}`)
+      const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
+      await redis.del(fullKey)
       return true
     } catch (err) {
       console.error("Cache DEL error:", err)
@@ -99,7 +92,8 @@ export const cacheManager = {
       const redis = getRedis()
       if (!redis) return false
 
-      const result = await redis.exists(`${CACHE_PREFIX}${key}`)
+      const fullKey = `${REDIS_CONFIG.keyPrefixes.cache}${key}`
+      const result = await redis.exists(fullKey)
       return result === 1
     } catch (err) {
       console.error("Cache EXISTS error:", err)
@@ -107,7 +101,7 @@ export const cacheManager = {
     }
   },
 
-  // Tag-based cache invalidation
+  // Cache invalidation by tags
   async invalidateByTag(tag: string): Promise<number> {
     if (!isRedisEnabled()) return 0
 
@@ -115,122 +109,146 @@ export const cacheManager = {
       const redis = getRedis()
       if (!redis) return 0
 
-      const tagKey = `${TAG_PREFIX}${tag}`
-      const cacheKeys = await redis.smembers(tagKey)
+      const tagKey = `${REDIS_CONFIG.keyPrefixes.tag}${tag}`
+      const keys = await redis.smembers(tagKey)
 
-      if (cacheKeys.length === 0) return 0
+      if (keys.length === 0) return 0
 
-      // Delete all cache entries with this tag
-      await redis.del(...cacheKeys)
-      // Delete the tag set
+      // Delete all keys associated with this tag
+      await redis.del(...keys)
+      // Delete the tag set itself
       await redis.del(tagKey)
 
-      return cacheKeys.length
+      return keys.length
     } catch (err) {
       console.error("Cache invalidateByTag error:", err)
       return 0
     }
   },
 
-  // User-specific cache operations
-  async getCachedUserProfile(userId: string): Promise<any> {
-    return await this.get(`user:profile:${userId}`)
+  // Cache invalidation by pattern
+  async invalidateByPattern(pattern: string): Promise<number> {
+    if (!isRedisEnabled()) return 0
+
+    try {
+      const redis = getRedis()
+      if (!redis) return 0
+
+      const fullPattern = `${REDIS_CONFIG.keyPrefixes.cache}${pattern}`
+      const keys = await redis.keys(fullPattern)
+
+      if (keys.length === 0) return 0
+
+      await redis.del(...keys)
+      return keys.length
+    } catch (err) {
+      console.error("Cache invalidateByPattern error:", err)
+      return 0
+    }
   },
 
+  // User-specific cache operations
   async cacheUserProfile(userId: string, profile: any): Promise<boolean> {
-    return await this.set(`user:profile:${userId}`, profile, {
-      ttl: "userProfile",
-      tags: ["user", `user:${userId}`],
+    return await this.set(`user:${userId}:profile`, profile, {
+      ttl: REDIS_CONFIG.ttl.userProfile,
+      tags: [`user:${userId}`, "profiles"],
     })
   },
 
-  async invalidateUser(userId: string): Promise<void> {
-    await this.invalidateByTag(`user:${userId}`)
+  async getUserProfile(userId: string): Promise<any> {
+    return await this.get(`user:${userId}:profile`)
+  },
+
+  async invalidateUser(userId: string): Promise<number> {
+    return await this.invalidateByTag(`user:${userId}`)
   },
 
   // Artist-specific cache operations
-  async getCachedArtist(artistId: string): Promise<any> {
-    return await this.get(`artist:${artistId}`)
-  },
-
-  async cacheArtist(artistId: string, artist: any): Promise<boolean> {
-    return await this.set(`artist:${artistId}`, artist, {
-      ttl: "artistData",
-      tags: ["artist", `artist:${artistId}`],
+  async cacheArtistData(artistId: string, data: any): Promise<boolean> {
+    return await this.set(`artist:${artistId}:data`, data, {
+      ttl: REDIS_CONFIG.ttl.artistData,
+      tags: [`artist:${artistId}`, "artists"],
     })
   },
 
-  async invalidateArtist(artistId: string): Promise<void> {
-    await this.invalidateByTag(`artist:${artistId}`)
+  async getArtistData(artistId: string): Promise<any> {
+    return await this.get(`artist:${artistId}:data`)
   },
 
-  // Search cache operations
-  async getCachedSearch(query: string): Promise<any> {
-    const searchKey = `search:${Buffer.from(query).toString("base64")}`
-    return await this.get(searchKey)
-  },
-
-  async cacheSearch(query: string, results: any): Promise<boolean> {
-    const searchKey = `search:${Buffer.from(query).toString("base64")}`
-    return await this.set(searchKey, results, {
-      ttl: "shortCache",
-      tags: ["search"],
-    })
+  async invalidateArtist(artistId: string): Promise<number> {
+    return await this.invalidateByTag(`artist:${artistId}`)
   },
 
   // Notification cache operations
-  async getCachedNotifications(userId: string): Promise<any> {
-    return await this.get(`notifications:${userId}`)
-  },
-
-  async cacheNotifications(userId: string, notifications: any): Promise<boolean> {
-    return await this.set(`notifications:${userId}`, notifications, {
-      ttl: "notifications",
-      tags: ["notifications", `user:${userId}`],
+  async cacheUserNotifications(userId: string, notifications: any[]): Promise<boolean> {
+    return await this.set(`user:${userId}:notifications`, notifications, {
+      ttl: REDIS_CONFIG.ttl.notifications,
+      tags: [`user:${userId}`, "notifications"],
     })
   },
 
-  // Cache statistics and management
-  async getCacheStats(): Promise<{
-    totalKeys: number
-    memoryUsage: string
-    hitRate: number
-  }> {
+  async getUserNotifications(userId: string): Promise<any[]> {
+    return (await this.get(`user:${userId}:notifications`)) || []
+  },
+
+  // Analytics cache operations
+  async cacheAnalytics(key: string, data: any): Promise<boolean> {
+    return await this.set(`analytics:${key}`, data, {
+      ttl: REDIS_CONFIG.ttl.analytics,
+      tags: ["analytics"],
+    })
+  },
+
+  async getAnalytics(key: string): Promise<any> {
+    return await this.get(`analytics:${key}`)
+  },
+
+  // Cache statistics
+  async getCacheStats(): Promise<CacheStats> {
     if (!isRedisEnabled()) {
-      return { totalKeys: 0, memoryUsage: "0B", hitRate: 0 }
+      return {
+        totalKeys: 0,
+        cacheKeys: 0,
+        sessionKeys: 0,
+        rateLimitKeys: 0,
+      }
     }
 
     try {
       const redis = getRedis()
-      if (!redis) return { totalKeys: 0, memoryUsage: "0B", hitRate: 0 }
+      if (!redis) {
+        return {
+          totalKeys: 0,
+          cacheKeys: 0,
+          sessionKeys: 0,
+          rateLimitKeys: 0,
+        }
+      }
 
-      const info = await redis.info("memory")
-      const keyspace = await redis.info("keyspace")
+      const [cacheKeys, sessionKeys, rateLimitKeys] = await Promise.all([
+        redis.keys(`${REDIS_CONFIG.keyPrefixes.cache}*`),
+        redis.keys(`${REDIS_CONFIG.keyPrefixes.session}*`),
+        redis.keys(`${REDIS_CONFIG.keyPrefixes.rateLimit}*`),
+      ])
 
-      // Parse memory usage
-      const memoryMatch = info.match(/used_memory_human:(.+)/)
-      const memoryUsage = memoryMatch ? memoryMatch[1].trim() : "0B"
-
-      // Parse total keys
-      const keysMatch = keyspace.match(/keys=(\d+)/)
-      const totalKeys = keysMatch ? Number.parseInt(keysMatch[1]) : 0
-
-      // Calculate hit rate (simplified)
-      const stats = await redis.info("stats")
-      const hitsMatch = stats.match(/keyspace_hits:(\d+)/)
-      const missesMatch = stats.match(/keyspace_misses:(\d+)/)
-
-      const hits = hitsMatch ? Number.parseInt(hitsMatch[1]) : 0
-      const misses = missesMatch ? Number.parseInt(missesMatch[1]) : 0
-      const hitRate = hits + misses > 0 ? (hits / (hits + misses)) * 100 : 0
-
-      return { totalKeys, memoryUsage, hitRate }
+      return {
+        totalKeys: cacheKeys.length + sessionKeys.length + rateLimitKeys.length,
+        cacheKeys: cacheKeys.length,
+        sessionKeys: sessionKeys.length,
+        rateLimitKeys: rateLimitKeys.length,
+      }
     } catch (err) {
-      console.error("Cache getCacheStats error:", err)
-      return { totalKeys: 0, memoryUsage: "0B", hitRate: 0 }
+      console.error("Cache stats error:", err)
+      return {
+        totalKeys: 0,
+        cacheKeys: 0,
+        sessionKeys: 0,
+        rateLimitKeys: 0,
+      }
     }
   },
 
+  // Clear all cache (dangerous operation)
   async clearAllCache(): Promise<boolean> {
     if (!isRedisEnabled()) return false
 
@@ -238,86 +256,45 @@ export const cacheManager = {
       const redis = getRedis()
       if (!redis) return false
 
-      const pattern = `${CACHE_PREFIX}*`
+      const pattern = `${REDIS_CONFIG.keyPrefixes.cache}*`
       const keys = await redis.keys(pattern)
 
       if (keys.length > 0) {
         await redis.del(...keys)
       }
 
-      // Also clear tag keys
-      const tagPattern = `${TAG_PREFIX}*`
-      const tagKeys = await redis.keys(tagPattern)
-
-      if (tagKeys.length > 0) {
-        await redis.del(...tagKeys)
-      }
-
       return true
     } catch (err) {
-      console.error("Cache clearAllCache error:", err)
+      console.error("Cache clear error:", err)
       return false
     }
   },
 
-  // Batch operations
-  async mget(keys: string[]): Promise<(any | null)[]> {
-    if (!isRedisEnabled()) return keys.map(() => null)
+  // Cleanup expired cache entries
+  async cleanupExpiredCache(): Promise<number> {
+    if (!isRedisEnabled()) return 0
 
     try {
       const redis = getRedis()
-      if (!redis) return keys.map(() => null)
+      if (!redis) return 0
 
-      const cacheKeys = keys.map((key) => `${CACHE_PREFIX}${key}`)
-      const values = await redis.mget(...cacheKeys)
+      let cleaned = 0
+      const pattern = `${REDIS_CONFIG.keyPrefixes.cache}*`
+      const keys = await redis.keys(pattern)
 
-      return values.map((value) => (value ? JSON.parse(value) : null))
-    } catch (err) {
-      console.error("Cache MGET error:", err)
-      return keys.map(() => null)
-    }
-  },
-
-  async mset(entries: Array<{ key: string; value: any; options?: CacheOptions }>): Promise<boolean> {
-    if (!isRedisEnabled()) return false
-
-    try {
-      const redis = getRedis()
-      if (!redis) return false
-
-      const pipeline = redis.pipeline()
-
-      for (const entry of entries) {
-        const cacheKey = `${CACHE_PREFIX}${entry.key}`
-        const serializedValue = JSON.stringify(entry.value)
-
-        // Determine TTL
-        let ttl: number
-        if (typeof entry.options?.ttl === "number") {
-          ttl = entry.options.ttl
-        } else if (entry.options?.ttl && typeof entry.options.ttl === "string") {
-          ttl = CACHE_TTL[entry.options.ttl] || CACHE_TTL.mediumCache
-        } else {
-          ttl = CACHE_TTL.mediumCache
-        }
-
-        pipeline.setex(cacheKey, ttl, serializedValue)
-
-        // Handle tags
-        if (entry.options?.tags && entry.options.tags.length > 0) {
-          for (const tag of entry.options.tags) {
-            const tagKey = `${TAG_PREFIX}${tag}`
-            pipeline.sadd(tagKey, cacheKey)
-            pipeline.expire(tagKey, ttl + 300)
-          }
+      for (const key of keys) {
+        const ttl = await redis.ttl(key)
+        if (ttl === -1) {
+          // Key exists but has no expiration, delete it
+          await redis.del(key)
+          cleaned++
         }
       }
 
-      await pipeline.exec()
-      return true
+      return cleaned
     } catch (err) {
-      console.error("Cache MSET error:", err)
-      return false
+      console.error("Cache cleanup error:", err)
+      return 0
     }
   },
 }

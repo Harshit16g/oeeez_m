@@ -1,200 +1,336 @@
-import { createBrowserClient } from "@supabase/ssr"
+export const runtime = "nodejs"
+
+import { createClient } from "@supabase/supabase-js"
 import type { Database } from "./types"
-import { cacheManager } from "../redis/cache"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase environment variables")
-}
+// Client for browser/client-side operations
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+})
 
-// Create the client function - MAIN EXPORT
-export function createClient() {
-  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-      flowType: "pkce",
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10,
-      },
-    },
-    global: {
-      headers: {
-        "X-Client-Info": "artistly-webapp",
-      },
-    },
-  })
-}
+// Admin client for server-side operations
+export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})
 
-// Create singleton instance for named export
-export const supabase = createClient()
+// Enhanced client with additional helpers
+export class EnhancedSupabaseClient {
+  private client: ReturnType<typeof createClient<Database>>
+  private adminClient: ReturnType<typeof createClient<Database>>
 
-// Enhanced client class with caching capabilities
-class EnhancedSupabaseClient {
-  private client = createClient()
+  constructor() {
+    this.client = supabase
+    this.adminClient = supabaseAdmin
+  }
 
-  // Get user profile with optional caching
-  async getUserProfile(userId: string, useCache = true) {
+  // User management helpers
+  async getUserProfile(userId: string) {
     try {
-      // Try cache first if enabled
-      if (useCache && process.env.ENABLE_REDIS_CACHE === "true") {
-        try {
-          const cached = await cacheManager.getCachedUserProfile(userId)
-          if (cached) {
-            return { profile: cached, error: null }
-          }
-        } catch (cacheError) {
-          console.warn("Cache error, falling back to database:", cacheError)
-        }
-      }
+      const { data, error } = await this.client.from("profiles").select("*").eq("id", userId).single()
 
-      // Fetch from database
-      const { data, error } = await this.client.from("user_profiles").select("*").eq("id", userId).single()
-
-      if (error) {
-        return { profile: null, error }
-      }
-
-      // Cache the result if caching is enabled
-      if (useCache && process.env.ENABLE_REDIS_CACHE === "true" && data) {
-        try {
-          await cacheManager.cacheUserProfile(userId, data)
-        } catch (cacheError) {
-          console.warn("Failed to cache user profile:", cacheError)
-        }
-      }
-
-      return { profile: data, error: null }
+      if (error) throw error
+      return data
     } catch (error) {
       console.error("Error fetching user profile:", error)
-      return { profile: null, error }
+      return null
     }
   }
 
-  // Update user profile
   async updateUserProfile(userId: string, updates: any) {
     try {
+      const { data, error } = await this.client.from("profiles").update(updates).eq("id", userId).select().single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error("Error updating user profile:", error)
+      return null
+    }
+  }
+
+  async checkOnboardingStatus(userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await this.client.from("profiles").select("is_onboarded").eq("id", userId).single()
+
+      if (error) throw error
+      return data?.is_onboarded || false
+    } catch (error) {
+      console.error("Error checking onboarding status:", error)
+      return false
+    }
+  }
+
+  async completeOnboarding(userId: string, profileData: any) {
+    try {
       const { data, error } = await this.client
-        .from("user_profiles")
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .from("profiles")
+        .update({
+          ...profileData,
+          is_onboarded: true,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", userId)
         .select()
         .single()
 
-      if (error) {
-        return { profile: null, error }
-      }
-
-      // Invalidate cache if caching is enabled
-      if (process.env.ENABLE_REDIS_CACHE === "true") {
-        try {
-          await cacheManager.invalidateUser(userId)
-        } catch (cacheError) {
-          console.warn("Failed to invalidate user cache:", cacheError)
-        }
-      }
-
-      return { profile: data, error: null }
+      if (error) throw error
+      return data
     } catch (error) {
-      console.error("Error updating user profile:", error)
-      return { profile: null, error }
+      console.error("Error completing onboarding:", error)
+      return null
     }
   }
 
-  // Get artist data with caching
-  async getArtist(artistId: string, useCache = true) {
+  // Artist management helpers
+  async getArtists(filters?: any) {
     try {
-      // Try cache first if enabled
-      if (useCache && process.env.ENABLE_REDIS_CACHE === "true") {
-        try {
-          const cached = await cacheManager.getCachedArtist(artistId)
-          if (cached) {
-            return { artist: cached, error: null }
-          }
-        } catch (cacheError) {
-          console.warn("Cache error, falling back to database:", cacheError)
-        }
+      let query = this.client.from("artists").select("*")
+
+      if (filters?.genre) {
+        query = query.contains("genres", [filters.genre])
       }
 
-      // Fetch from database
-      const { data, error } = await this.client.from("artists").select("*").eq("id", artistId).single()
-
-      if (error) {
-        return { artist: null, error }
+      if (filters?.location) {
+        query = query.ilike("location", `%${filters.location}%`)
       }
 
-      // Cache the result if caching is enabled
-      if (useCache && process.env.ENABLE_REDIS_CACHE === "true" && data) {
-        try {
-          await cacheManager.cacheArtist(artistId, data)
-        } catch (cacheError) {
-          console.warn("Failed to cache artist:", cacheError)
-        }
+      if (filters?.priceRange) {
+        query = query.gte("hourly_rate", filters.priceRange.min).lte("hourly_rate", filters.priceRange.max)
       }
 
-      return { artist: data, error: null }
-    } catch (error) {
-      console.error("Error fetching artist:", error)
-      return { artist: null, error }
-    }
-  }
+      const { data, error } = await query.order("created_at", { ascending: false })
 
-  // Get all artists with caching
-  async getArtists(useCache = true) {
-    try {
-      const cacheKey = "all_artists"
-
-      // Try cache first if enabled
-      if (useCache && process.env.ENABLE_REDIS_CACHE === "true") {
-        try {
-          const cached = await cacheManager.get(cacheKey)
-          if (cached) {
-            return { artists: cached, error: null }
-          }
-        } catch (cacheError) {
-          console.warn("Cache error, falling back to database:", cacheError)
-        }
-      }
-
-      // Fetch from database
-      const { data, error } = await this.client.from("artists").select("*").order("created_at", { ascending: false })
-
-      if (error) {
-        return { artists: null, error }
-      }
-
-      // Cache the result if caching is enabled
-      if (useCache && process.env.ENABLE_REDIS_CACHE === "true" && data) {
-        try {
-          await cacheManager.set(cacheKey, data, {
-            ttl: "artistData",
-            tags: ["artists"],
-          })
-        } catch (cacheError) {
-          console.warn("Failed to cache artists:", cacheError)
-        }
-      }
-
-      return { artists: data, error: null }
+      if (error) throw error
+      return data || []
     } catch (error) {
       console.error("Error fetching artists:", error)
-      return { artists: null, error }
+      return []
     }
   }
 
-  // Get the raw Supabase client
-  getClient() {
+  async getArtistById(artistId: string) {
+    try {
+      const { data, error } = await this.client.from("artists").select("*").eq("id", artistId).single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error("Error fetching artist:", error)
+      return null
+    }
+  }
+
+  // Booking management helpers
+  async createBooking(bookingData: any) {
+    try {
+      const { data, error } = await this.client.from("bookings").insert(bookingData).select().single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error("Error creating booking:", error)
+      return null
+    }
+  }
+
+  async getUserBookings(userId: string) {
+    try {
+      const { data, error } = await this.client
+        .from("bookings")
+        .select(`
+          *,
+          artists (
+            id,
+            name,
+            profile_image_url,
+            genres
+          )
+        `)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error("Error fetching user bookings:", error)
+      return []
+    }
+  }
+
+  async getArtistBookings(artistId: string) {
+    try {
+      const { data, error } = await this.client
+        .from("bookings")
+        .select(`
+          *,
+          profiles (
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq("artist_id", artistId)
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error("Error fetching artist bookings:", error)
+      return []
+    }
+  }
+
+  // Notification helpers
+  async getUserNotifications(userId: string) {
+    try {
+      const { data, error } = await this.client
+        .from("notifications")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(50)
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error("Error fetching notifications:", error)
+      return []
+    }
+  }
+
+  async markNotificationAsRead(notificationId: string) {
+    try {
+      const { data, error } = await this.client
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", notificationId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error("Error marking notification as read:", error)
+      return null
+    }
+  }
+
+  async createNotification(notificationData: any) {
+    try {
+      const { data, error } = await this.adminClient.from("notifications").insert(notificationData).select().single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error("Error creating notification:", error)
+      return null
+    }
+  }
+
+  // Admin helpers (using service role key)
+  async adminGetUsers() {
+    try {
+      const { data, error } = await this.adminClient.auth.admin.listUsers()
+
+      if (error) throw error
+      return data.users || []
+    } catch (error) {
+      console.error("Error fetching users:", error)
+      return []
+    }
+  }
+
+  async adminDeleteUser(userId: string) {
+    try {
+      const { error } = await this.adminClient.auth.admin.deleteUser(userId)
+
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error("Error deleting user:", error)
+      return false
+    }
+  }
+
+  // File upload helpers
+  async uploadFile(bucket: string, path: string, file: File) {
+    try {
+      const { data, error } = await this.client.storage.from(bucket).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      })
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error("Error uploading file:", error)
+      return null
+    }
+  }
+
+  async getPublicUrl(bucket: string, path: string) {
+    try {
+      const { data } = this.client.storage.from(bucket).getPublicUrl(path)
+
+      return data.publicUrl
+    } catch (error) {
+      console.error("Error getting public URL:", error)
+      return null
+    }
+  }
+
+  // Real-time subscriptions
+  subscribeToUserNotifications(userId: string, callback: (payload: any) => void) {
     return this.client
+      .channel(`notifications:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        callback,
+      )
+      .subscribe()
+  }
+
+  subscribeToBookingUpdates(bookingId: string, callback: (payload: any) => void) {
+    return this.client
+      .channel(`booking:${bookingId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "bookings",
+          filter: `id=eq.${bookingId}`,
+        },
+        callback,
+      )
+      .subscribe()
   }
 }
 
-// Export singleton instance
-export const enhancedSupabaseClient = new EnhancedSupabaseClient()
+// Create and export the enhanced client instance
+export const enhancedSupabase = new EnhancedSupabaseClient()
 
-// Default export for backward compatibility
-export default createClient
+// Export createClient for compatibility
+export { createClient }
+
+// Export the regular clients
+
+// Export as default
+export default enhancedSupabase

@@ -1,28 +1,31 @@
-export const runtime = "nodejs"
-
-import { getRedis, isRedisEnabled } from "./client"
+import { getRedis } from "./client"
 import { REDIS_CONFIG } from "./config"
-
-export interface RateLimitOptions {
-  window: number // Time window in seconds
-  max: number // Maximum requests per window
-}
 
 export interface RateLimitResult {
   allowed: boolean
+  limit: number
   remaining: number
   resetTime: number
-  total: number
 }
 
-export const rateLimiter = {
-  async checkRateLimit(key: string, options: RateLimitOptions): Promise<RateLimitResult> {
-    if (!isRedisEnabled() || !REDIS_CONFIG.features.enableRateLimit) {
+export interface RateLimitConfig {
+  windowMs: number
+  maxRequests: number
+  keyGenerator?: (identifier: string) => string
+}
+
+class RateLimiter {
+  private getKey(identifier: string, prefix = "default"): string {
+    return `${REDIS_CONFIG.keyPrefixes.rateLimit}${prefix}:${identifier}`
+  }
+
+  public async checkLimit(identifier: string, config: RateLimitConfig, prefix = "default"): Promise<RateLimitResult> {
+    if (!REDIS_CONFIG.features.enableRateLimit) {
       return {
         allowed: true,
-        remaining: options.max,
-        resetTime: Date.now() + options.window * 1000,
-        total: options.max,
+        limit: config.maxRequests,
+        remaining: config.maxRequests,
+        resetTime: Date.now() + config.windowMs,
       }
     }
 
@@ -31,191 +34,129 @@ export const rateLimiter = {
       if (!redis) {
         return {
           allowed: true,
-          remaining: options.max,
-          resetTime: Date.now() + options.window * 1000,
-          total: options.max,
+          limit: config.maxRequests,
+          remaining: config.maxRequests,
+          resetTime: Date.now() + config.windowMs,
         }
       }
 
+      const key = this.getKey(identifier, prefix)
       const now = Date.now()
-      const windowStart = Math.floor(now / (options.window * 1000)) * options.window
-      const rateLimitKey = `${REDIS_CONFIG.keyPrefixes.rateLimit}${key}:${windowStart}`
+      const windowStart = now - config.windowMs
 
-      // Use Redis pipeline for atomic operations
-      const pipeline = redis.pipeline()
-      pipeline.incr(rateLimitKey)
-      pipeline.expire(rateLimitKey, options.window)
+      await redis.zremrangebyscore(key, 0, windowStart)
+      const currentRequests = await redis.zcard(key)
 
-      const results = await pipeline.exec()
-      const count = (results?.[0]?.[1] as number) || 0
+      const allowed = currentRequests < config.maxRequests
+      const remaining = Math.max(0, config.maxRequests - currentRequests)
+      const resetTime = now + config.windowMs
 
-      const remaining = Math.max(0, options.max - count)
-      const resetTime = (windowStart + options.window) * 1000
+      if (allowed) {
+        await redis.zadd(key, now, now)
+        await redis.expire(key, Math.ceil(config.windowMs / 1000))
+      }
 
       return {
-        allowed: count <= options.max,
-        remaining,
+        allowed,
+        limit: config.maxRequests,
+        remaining: allowed ? remaining - 1 : remaining,
         resetTime,
-        total: options.max,
       }
-    } catch (err) {
-      console.error("Rate limit check error:", err)
-      // Fail open - allow the request if Redis is down
+    } catch (error) {
+      console.error("Rate limit check error:", error)
       return {
         allowed: true,
-        remaining: options.max,
-        resetTime: Date.now() + options.window * 1000,
-        total: options.max,
+        limit: config.maxRequests,
+        remaining: config.maxRequests,
+        resetTime: Date.now() + config.windowMs,
       }
     }
-  },
+  }
 
-  // IP-based rate limiting
-  async checkIPRateLimit(ip: string, options?: Partial<RateLimitOptions>): Promise<RateLimitResult> {
-    const rateLimitOptions: RateLimitOptions = {
-      window: options?.window || REDIS_CONFIG.rateLimit.window,
-      max: options?.max || REDIS_CONFIG.rateLimit.max,
-    }
+  public readonly configs = {
+    login: {
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+    },
+    signup: {
+      windowMs: 60 * 60 * 1000,
+      maxRequests: 3,
+    },
+    passwordReset: {
+      windowMs: 60 * 60 * 1000,
+      maxRequests: 3,
+    },
+    api: {
+      windowMs: 60 * 1000,
+      maxRequests: 60,
+    },
+    search: {
+      windowMs: 60 * 1000,
+      maxRequests: 30,
+    },
+  }
 
-    return await this.checkRateLimit(`ip:${ip}`, rateLimitOptions)
-  },
+  public async checkLoginLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkLimit(identifier, this.configs.login, "login")
+  }
 
-  // User-based rate limiting
-  async checkUserRateLimit(userId: string, options?: Partial<RateLimitOptions>): Promise<RateLimitResult> {
-    const rateLimitOptions: RateLimitOptions = {
-      window: options?.window || REDIS_CONFIG.rateLimit.window,
-      max: options?.max || REDIS_CONFIG.rateLimit.max,
-    }
+  public async checkSignupLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkLimit(identifier, this.configs.signup, "signup")
+  }
 
-    return await this.checkRateLimit(`user:${userId}`, rateLimitOptions)
-  },
+  public async checkPasswordResetLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkLimit(identifier, this.configs.passwordReset, "password_reset")
+  }
 
-  // API endpoint rate limiting
-  async checkEndpointRateLimit(
-    endpoint: string,
-    identifier: string,
-    options?: Partial<RateLimitOptions>,
-  ): Promise<RateLimitResult> {
-    const rateLimitOptions: RateLimitOptions = {
-      window: options?.window || REDIS_CONFIG.rateLimit.window,
-      max: options?.max || REDIS_CONFIG.rateLimit.max,
-    }
+  public async checkApiLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkLimit(identifier, this.configs.api, "api")
+  }
 
-    return await this.checkRateLimit(`endpoint:${endpoint}:${identifier}`, rateLimitOptions)
-  },
+  public async checkSearchLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkLimit(identifier, this.configs.search, "search")
+  }
 
-  // Reset rate limit for a specific key
-  async resetRateLimit(key: string): Promise<boolean> {
-    if (!isRedisEnabled()) return false
-
+  public async resetLimit(identifier: string, prefix = "default"): Promise<void> {
     try {
       const redis = getRedis()
-      if (!redis) return false
+      if (!redis) return
 
-      const pattern = `${REDIS_CONFIG.keyPrefixes.rateLimit}${key}:*`
-      const keys = await redis.keys(pattern)
-
-      if (keys.length > 0) {
-        await redis.del(...keys)
-      }
-
-      return true
-    } catch (err) {
-      console.error("Rate limit reset error:", err)
-      return false
+      const key = this.getKey(identifier, prefix)
+      await redis.del(key)
+    } catch (error) {
+      console.error("Failed to reset rate limit:", error)
     }
-  },
+  }
 
-  // Get rate limit statistics
-  async getRateLimitStats(): Promise<{
-    totalKeys: number
-    activeWindows: number
-    topLimitedKeys: Array<{ key: string; count: number }>
-  }> {
-    if (!isRedisEnabled()) {
-      return {
-        totalKeys: 0,
-        activeWindows: 0,
-        topLimitedKeys: [],
-      }
-    }
-
+  public async getLimitInfo(
+    identifier: string,
+    config: RateLimitConfig,
+    prefix = "default",
+  ): Promise<{ current: number; limit: number; resetTime: number }> {
     try {
       const redis = getRedis()
       if (!redis) {
-        return {
-          totalKeys: 0,
-          activeWindows: 0,
-          topLimitedKeys: [],
-        }
+        return { current: 0, limit: config.maxRequests, resetTime: Date.now() + config.windowMs }
       }
 
-      const pattern = `${REDIS_CONFIG.keyPrefixes.rateLimit}*`
-      const keys = await redis.keys(pattern)
+      const key = this.getKey(identifier, prefix)
+      const now = Date.now()
+      const windowStart = now - config.windowMs
 
-      const topLimitedKeys: Array<{ key: string; count: number }> = []
-
-      for (const key of keys.slice(0, 10)) {
-        // Only check top 10 for performance
-        try {
-          const count = await redis.get(key)
-          if (count) {
-            const cleanKey = key.replace(REDIS_CONFIG.keyPrefixes.rateLimit, "")
-            topLimitedKeys.push({
-              key: cleanKey,
-              count: Number.parseInt(count, 10),
-            })
-          }
-        } catch (err) {
-          // Skip individual key errors
-        }
-      }
-
-      // Sort by count descending
-      topLimitedKeys.sort((a, b) => b.count - a.count)
+      await redis.zremrangebyscore(key, 0, windowStart)
+      const current = await redis.zcard(key)
 
       return {
-        totalKeys: keys.length,
-        activeWindows: keys.length,
-        topLimitedKeys: topLimitedKeys.slice(0, 5), // Return top 5
+        current,
+        limit: config.maxRequests,
+        resetTime: now + config.windowMs,
       }
-    } catch (err) {
-      console.error("Rate limit stats error:", err)
-      return {
-        totalKeys: 0,
-        activeWindows: 0,
-        topLimitedKeys: [],
-      }
+    } catch (error) {
+      console.error("Failed to get rate limit info:", error)
+      return { current: 0, limit: config.maxRequests, resetTime: Date.now() + config.windowMs }
     }
-  },
-
-  // Cleanup expired rate limit entries
-  async cleanupExpiredRateLimits(): Promise<number> {
-    if (!isRedisEnabled()) return 0
-
-    try {
-      const redis = getRedis()
-      if (!redis) return 0
-
-      let cleaned = 0
-      const pattern = `${REDIS_CONFIG.keyPrefixes.rateLimit}*`
-      const keys = await redis.keys(pattern)
-
-      for (const key of keys) {
-        const ttl = await redis.ttl(key)
-        if (ttl === -1) {
-          // Key exists but has no expiration, delete it
-          await redis.del(key)
-          cleaned++
-        }
-      }
-
-      return cleaned
-    } catch (err) {
-      console.error("Rate limit cleanup error:", err)
-      return 0
-    }
-  },
+  }
 }
 
+export const rateLimiter = new RateLimiter()
 export default rateLimiter

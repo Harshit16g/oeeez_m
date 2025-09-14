@@ -1,23 +1,24 @@
-export const runtime = "nodejs"
+// Redis client with safe disabled mode
+let redis: any = null
+let isInitialized = false
 
-import Redis from "ioredis"
+const isRedisEnabled = (): boolean => {
+  return process.env.ENABLE_REDIS_CACHE === "true" && !!process.env.REDIS_URL
+}
 
-let redis: Redis | null = null
+export async function initializeRedis(): Promise<any> {
+  if (isInitialized) return redis
 
-export function initializeRedis(): Redis | null {
-  if (redis) return redis
-
-  if (process.env.ENABLE_REDIS_CACHE !== "true") {
-    console.warn("⚠️ Redis disabled via ENABLE_REDIS_CACHE environment variable")
-    return null
-  }
-
-  if (!process.env.REDIS_URL) {
-    console.warn("⚠️ Redis disabled: REDIS_URL not provided")
+  if (!isRedisEnabled()) {
+    console.log("⚠️ Redis disabled via environment variables")
+    isInitialized = true
     return null
   }
 
   try {
+    // Only import ioredis if Redis is enabled
+    const Redis = require("ioredis")
+
     redis = new Redis(process.env.REDIS_URL, {
       lazyConnect: true,
       maxRetriesPerRequest: Number(process.env.REDIS_MAX_RETRIES ?? 3),
@@ -25,61 +26,60 @@ export function initializeRedis(): Redis | null {
       commandTimeout: Number(process.env.REDIS_COMMAND_TIMEOUT ?? 5000),
       keepAlive: process.env.REDIS_KEEP_ALIVE === "true",
       enableReadyCheck: process.env.REDIS_READY_CHECK !== "false",
-      retryStrategy: (times) => Math.min(times * (Number(process.env.REDIS_RETRY_DELAY) || 200), 2000),
-      reconnectOnError: (err) => {
-        const targetError = "READONLY"
-        return err.message.includes(targetError)
-      },
+      retryStrategy: (times: number) => Math.min(times * 200, 2000),
     })
 
     redis.on("connect", () => console.log("✅ Redis connected"))
     redis.on("ready", () => console.log("✅ Redis ready"))
-    redis.on("error", (err) => console.error("❌ Redis error:", err.message))
+    redis.on("error", (err: Error) => console.error("❌ Redis error:", err.message))
     redis.on("close", () => console.log("⚠️ Redis connection closed"))
     redis.on("reconnecting", () => console.log("🔄 Redis reconnecting..."))
 
+    isInitialized = true
     return redis
   } catch (err) {
     console.error("❌ Redis initialization failed:", err)
+    isInitialized = true
     return null
   }
 }
 
-export function getRedis(): Redis | null {
-  if (!redis) return initializeRedis()
+export function getRedis(): any {
+  if (!isInitialized) {
+    initializeRedis()
+  }
   return redis
 }
 
-export function isRedisEnabled(): boolean {
-  return process.env.ENABLE_REDIS_CACHE === "true" && !!process.env.REDIS_URL
-}
-
-// Safe Redis operations with error handling
-export async function safeGet(key: string): Promise<string | null> {
+// Safe Redis operations that work when disabled
+export async function safeGet(key: string): Promise<any> {
   if (!isRedisEnabled()) return null
 
   try {
     const client = getRedis()
     if (!client) return null
 
-    return await client.get(key)
+    const value = await client.get(key)
+    return value ? JSON.parse(value) : null
   } catch (err) {
     console.error("Redis GET error:", err)
     return null
   }
 }
 
-export async function safeSet(key: string, value: string, ttl?: number): Promise<boolean> {
+export async function safeSet(key: string, value: any, ttl?: number): Promise<boolean> {
   if (!isRedisEnabled()) return false
 
   try {
     const client = getRedis()
     if (!client) return false
 
+    const serializedValue = JSON.stringify(value)
+
     if (ttl) {
-      await client.setex(key, ttl, value)
+      await client.setex(key, ttl, serializedValue)
     } else {
-      await client.set(key, value)
+      await client.set(key, serializedValue)
     }
     return true
   } catch (err) {
@@ -88,14 +88,18 @@ export async function safeSet(key: string, value: string, ttl?: number): Promise
   }
 }
 
-export async function safeDel(key: string): Promise<boolean> {
+export async function safeDel(key: string | string[]): Promise<boolean> {
   if (!isRedisEnabled()) return false
 
   try {
     const client = getRedis()
     if (!client) return false
 
-    await client.del(key)
+    if (Array.isArray(key)) {
+      await client.del(...key)
+    } else {
+      await client.del(key)
+    }
     return true
   } catch (err) {
     console.error("Redis DEL error:", err)
@@ -118,28 +122,14 @@ export async function safeExists(key: string): Promise<boolean> {
   }
 }
 
-export async function safeIncr(key: string): Promise<number | null> {
-  if (!isRedisEnabled()) return null
-
-  try {
-    const client = getRedis()
-    if (!client) return null
-
-    return await client.incr(key)
-  } catch (err) {
-    console.error("Redis INCR error:", err)
-    return null
-  }
-}
-
-export async function safeExpire(key: string, seconds: number): Promise<boolean> {
+export async function safeExpire(key: string, ttl: number): Promise<boolean> {
   if (!isRedisEnabled()) return false
 
   try {
     const client = getRedis()
     if (!client) return false
 
-    await client.expire(key, seconds)
+    await client.expire(key, ttl)
     return true
   } catch (err) {
     console.error("Redis EXPIRE error:", err)
@@ -147,22 +137,57 @@ export async function safeExpire(key: string, seconds: number): Promise<boolean>
   }
 }
 
-// Health check function
-export async function checkRedisHealth(): Promise<{ healthy: boolean; error?: string }> {
+export async function safeKeys(pattern: string): Promise<string[]> {
+  if (!isRedisEnabled()) return []
+
+  try {
+    const client = getRedis()
+    if (!client) return []
+
+    return await client.keys(pattern)
+  } catch (err) {
+    console.error("Redis KEYS error:", err)
+    return []
+  }
+}
+
+export async function healthCheck(): Promise<{
+  status: "healthy" | "unhealthy" | "disabled"
+  latency?: number
+  error?: string
+}> {
   if (!isRedisEnabled()) {
-    return { healthy: false, error: "Redis is disabled" }
+    return { status: "disabled" }
   }
 
   try {
     const client = getRedis()
     if (!client) {
-      return { healthy: false, error: "Redis client not initialized" }
+      return { status: "unhealthy", error: "Redis client not initialized" }
     }
 
+    const start = Date.now()
     await client.ping()
-    return { healthy: true }
+    const latency = Date.now() - start
+
+    return { status: "healthy", latency }
   } catch (err) {
-    return { healthy: false, error: (err as Error).message }
+    return {
+      status: "unhealthy",
+      error: err instanceof Error ? err.message : "Unknown error",
+    }
+  }
+}
+
+export async function shutdownRedis(): Promise<void> {
+  if (redis) {
+    try {
+      await redis.quit()
+      redis = null
+      console.log("✅ Redis shutdown completed")
+    } catch (err) {
+      console.error("❌ Redis shutdown failed:", err)
+    }
   }
 }
 

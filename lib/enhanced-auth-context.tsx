@@ -4,8 +4,10 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import type { User, Session, AuthError } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase/client"
-import { enhancedSupabase } from "@/lib/supabase/enhanced-client"
+import { enhancedSupabaseHelpers } from "@/lib/supabase/enhanced-client"
 import { cacheManager } from "@/lib/redis/cache"
+import { sessionManager } from "@/lib/redis/session"
+import { toast } from "sonner"
 
 export interface UserProfile {
   id: string
@@ -17,9 +19,14 @@ export interface UserProfile {
   phone?: string
   website?: string
   social_links?: Record<string, string>
+  skills?: string[]
+  portfolio_url?: string
+  hourly_rate?: number
+  availability?: "available" | "busy" | "unavailable"
   preferences?: Record<string, any>
   is_onboarded: boolean
   is_artist: boolean
+  user_type: "client" | "artist"
   created_at: string
   updated_at: string
 }
@@ -53,17 +60,17 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
   const loadUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
       // Try to get from cache first
-      const cachedProfile = await cacheManager.getUserProfile(userId)
+      const cachedProfile = await cacheManager.getCachedUserProfile(userId)
       if (cachedProfile) {
         return cachedProfile
       }
 
       // Fetch from database
-      const profileData = await enhancedSupabase.getUserProfile(userId)
+      const profileData = await enhancedSupabaseHelpers.getUserProfile(userId)
       if (profileData) {
         // Cache the profile
         await cacheManager.cacheUserProfile(userId, profileData)
-        return profileData
+        return profileData as UserProfile
       }
 
       return null
@@ -99,6 +106,16 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           if (mounted) {
             setProfile(userProfile)
           }
+
+          // Create Redis session if enabled
+          try {
+            await sessionManager.createSession(initialSession.user.id, {
+              email: initialSession.user.email,
+              loginTime: new Date().toISOString(),
+            })
+          } catch (redisError) {
+            console.warn("Failed to create Redis session:", redisError)
+          }
         }
       } catch (err) {
         console.error("Auth initialization error:", err)
@@ -132,6 +149,16 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         if (mounted) {
           setProfile(userProfile)
         }
+
+        // Create Redis session if enabled
+        try {
+          await sessionManager.createSession(session.user.id, {
+            email: session.user.email,
+            loginTime: new Date().toISOString(),
+          })
+        } catch (redisError) {
+          console.warn("Failed to create Redis session:", redisError)
+        }
       } else {
         setProfile(null)
       }
@@ -161,13 +188,16 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
 
       if (error) {
         setError(error)
+        toast.error(error.message)
         return { user: null, error }
       }
 
+      toast.success("Account created! Please check your email to verify your account.")
       return { user: data.user, error: null }
     } catch (err) {
       const authError = err as AuthError
       setError(authError)
+      toast.error(authError.message)
       return { user: null, error: authError }
     } finally {
       setLoading(false)
@@ -187,13 +217,16 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
 
       if (error) {
         setError(error)
+        toast.error(error.message)
         return { user: null, error }
       }
 
+      toast.success("Signed in successfully!")
       return { user: data.user, error: null }
     } catch (err) {
       const authError = err as AuthError
       setError(authError)
+      toast.error(authError.message)
       return { user: null, error: authError }
     } finally {
       setLoading(false)
@@ -206,15 +239,21 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       setLoading(true)
       setError(null)
 
-      // Clear cached profile
+      // Clear cached profile and Redis session
       if (user?.id) {
         await cacheManager.invalidateUser(user.id)
+        try {
+          await sessionManager.deleteAllUserSessions(user.id)
+        } catch (redisError) {
+          console.warn("Failed to clean up Redis sessions:", redisError)
+        }
       }
 
       const { error } = await supabase.auth.signOut()
 
       if (error) {
         setError(error)
+        toast.error(error.message)
         return { error }
       }
 
@@ -223,10 +262,12 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       setProfile(null)
       setSession(null)
 
+      toast.success("Signed out successfully!")
       return { error: null }
     } catch (err) {
       const authError = err as AuthError
       setError(authError)
+      toast.error(authError.message)
       return { error: authError }
     } finally {
       setLoading(false)
@@ -244,13 +285,16 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
 
       if (error) {
         setError(error)
+        toast.error(error.message)
         return { error }
       }
 
+      toast.success("Password reset email sent!")
       return { error: null }
     } catch (err) {
       const authError = err as AuthError
       setError(authError)
+      toast.error(authError.message)
       return { error: authError }
     }
   }, [])
@@ -263,19 +307,21 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       try {
         setError(null)
 
-        const updatedProfile = await enhancedSupabase.updateUserProfile(user.id, updates)
+        const updatedProfile = await enhancedSupabaseHelpers.updateUserProfile(user.id, updates)
 
         if (updatedProfile) {
-          setProfile(updatedProfile)
+          setProfile(updatedProfile as UserProfile)
           // Update cache
           await cacheManager.cacheUserProfile(user.id, updatedProfile)
-          return updatedProfile
+          toast.success("Profile updated successfully!")
+          return updatedProfile as UserProfile
         }
 
         return null
       } catch (err) {
         console.error("Error updating profile:", err)
         setError(err as AuthError)
+        toast.error("Failed to update profile")
         return null
       }
     },
@@ -304,12 +350,13 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       try {
         setError(null)
 
-        const updatedProfile = await enhancedSupabase.completeOnboarding(user.id, profileData)
+        const updatedProfile = await enhancedSupabaseHelpers.completeOnboarding(user.id, profileData)
 
         if (updatedProfile) {
-          setProfile(updatedProfile)
+          setProfile(updatedProfile as UserProfile)
           // Update cache
           await cacheManager.cacheUserProfile(user.id, updatedProfile)
+          toast.success("Onboarding completed!")
           return true
         }
 
@@ -317,6 +364,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       } catch (err) {
         console.error("Error completing onboarding:", err)
         setError(err as AuthError)
+        toast.error("Failed to complete onboarding")
         return false
       }
     },
@@ -355,85 +403,26 @@ export function useAuth(): AuthContextType {
 }
 
 // Hook to check onboarding status
-export function useOnboardingStatus(userId?: string): "pending" | "completed" | "loading" | null {
-  const [status, setStatus] = useState<"pending" | "completed" | "loading" | null>("loading")
-  const { user, profile } = useAuth()
-
-  useEffect(() => {
-    const checkStatus = async () => {
-      const targetUserId = userId || user?.id
-
-      if (!targetUserId) {
-        setStatus(null)
-        return
-      }
-
-      if (profile) {
-        setStatus(profile.is_onboarded ? "completed" : "pending")
-        return
-      }
-
-      try {
-        const isOnboarded = await enhancedSupabase.checkOnboardingStatus(targetUserId)
-        setStatus(isOnboarded ? "completed" : "pending")
-      } catch (error) {
-        console.error("Error checking onboarding status:", error)
-        setStatus("pending")
-      }
-    }
-
-    checkStatus()
-  }, [userId, user?.id, profile])
-
-  return status
-}
-
-// Hook to get user profile
-export function useUserProfile(userId?: string): {
-  profile: UserProfile | null
+export function useOnboardingStatus(): {
+  isLoggedIn: boolean
+  isOnboarded: boolean
+  needsOnboarding: boolean
   loading: boolean
-  error: string | null
-  refresh: () => Promise<void>
+  userType?: "client" | "artist"
 } {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, profile, loading } = useAuth()
 
-  const refresh = useCallback(async () => {
-    const targetUserId = userId || user?.id
-
-    if (!targetUserId) {
-      setProfile(null)
-      setLoading(false)
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Clear cache and fetch fresh data
-      await cacheManager.invalidateUser(targetUserId)
-      const profileData = await enhancedSupabase.getUserProfile(targetUserId)
-
-      setProfile(profileData)
-    } catch (err) {
-      console.error("Error fetching user profile:", err)
-      setError(err instanceof Error ? err.message : "Unknown error")
-    } finally {
-      setLoading(false)
-    }
-  }, [userId, user?.id])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  return { profile, loading, error, refresh }
+  return {
+    isLoggedIn: !!user,
+    isOnboarded: profile?.is_onboarded || false,
+    needsOnboarding: user && !profile?.is_onboarded,
+    loading,
+    userType: profile?.user_type,
+  }
 }
 
 // Export the provider as default
 export default EnhancedAuthProvider
 
-// Export the provider with a named export for compatibility
+// Alternative export for backward compatibility
+export const AuthProvider = EnhancedAuthProvider

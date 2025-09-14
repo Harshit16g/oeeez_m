@@ -4,6 +4,7 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import type { User, Session, AuthError } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase/client"
+import { sessionManager, type SessionData } from "./redis/session"
 import { toast } from "sonner"
 
 export interface UserProfile {
@@ -28,6 +29,7 @@ export interface AuthState {
   user: User | null
   profile: UserProfile | null
   session: Session | null
+  sessionData: SessionData | null
   loading: boolean
   error: string | null
 }
@@ -41,6 +43,7 @@ export interface AuthContextType extends AuthState {
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>
   deleteAccount: () => Promise<{ error: Error | null }>
+  trackEvent: (event: string, properties?: Record<string, any>) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -58,6 +61,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     user: null,
     profile: null,
     session: null,
+    sessionData: null,
     loading: true,
     error: null,
   })
@@ -165,6 +169,15 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
   const signOut = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true }))
 
+    // Clean up Redis session if enabled
+    if (state.session && process.env.ENABLE_REDIS_SESSIONS === "true") {
+      try {
+        await sessionManager.deleteSession(state.session.access_token)
+      } catch (redisError) {
+        console.warn("Failed to clean up Redis session:", redisError)
+      }
+    }
+
     const { error } = await supabase.auth.signOut()
 
     if (error) {
@@ -177,13 +190,14 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       user: null,
       profile: null,
       session: null,
+      sessionData: null,
       loading: false,
       error: null,
     })
 
     toast.success("Signed out successfully")
     return { error: null }
-  }, [])
+  }, [state.session])
 
   // Reset password
   const resetPassword = useCallback(async (email: string) => {
@@ -228,8 +242,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         return { error: new Error(profileError.message) }
       }
 
-      // Then delete the auth user (this requires admin privileges)
-      // For now, we'll just sign out and let the user contact support
+      // Then sign out
       await signOut()
       toast.success("Account deletion initiated. Please contact support to complete the process.")
       return { error: null }
@@ -238,6 +251,29 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       return { error: error as Error }
     }
   }, [state.user, signOut])
+
+  // Track events (analytics)
+  const trackEvent = useCallback(
+    (event: string, properties?: Record<string, any>) => {
+      try {
+        // Log to console in development
+        if (process.env.NODE_ENV === "development") {
+          console.log("Event tracked:", event, properties)
+        }
+
+        // Add your analytics tracking here (Google Analytics, Mixpanel, etc.)
+        if (typeof window !== "undefined" && (window as any).gtag) {
+          ;(window as any).gtag("event", event, {
+            ...properties,
+            user_id: state.user?.id,
+          })
+        }
+      } catch (error) {
+        console.error("Error tracking event:", error)
+      }
+    },
+    [state.user],
+  )
 
   // Initialize auth state
   useEffect(() => {
@@ -252,10 +288,26 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         if (mounted) {
           if (session?.user) {
             const profile = await fetchProfile(session.user.id)
+
+            // Create Redis session if enabled
+            let sessionData = null
+            if (process.env.ENABLE_REDIS_SESSIONS === "true") {
+              try {
+                sessionData = await sessionManager.createSession(session.user.id, {
+                  userId: session.user.id,
+                  email: session.user.email,
+                  loginTime: new Date().toISOString(),
+                })
+              } catch (redisError) {
+                console.warn("Failed to create Redis session:", redisError)
+              }
+            }
+
             setState({
               user: session.user,
               profile,
               session,
+              sessionData,
               loading: false,
               error: null,
             })
@@ -264,6 +316,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
               user: null,
               profile: null,
               session: null,
+              sessionData: null,
               loading: false,
               error: null,
             })
@@ -276,6 +329,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
             user: null,
             profile: null,
             session: null,
+            sessionData: null,
             loading: false,
             error: "Failed to initialize authentication",
           })
@@ -295,10 +349,26 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
 
       if (session?.user) {
         const profile = await fetchProfile(session.user.id)
+
+        // Create Redis session if enabled
+        let sessionData = null
+        if (process.env.ENABLE_REDIS_SESSIONS === "true") {
+          try {
+            sessionData = await sessionManager.createSession(session.user.id, {
+              userId: session.user.id,
+              email: session.user.email,
+              loginTime: new Date().toISOString(),
+            })
+          } catch (redisError) {
+            console.warn("Failed to create Redis session:", redisError)
+          }
+        }
+
         setState({
           user: session.user,
           profile,
           session,
+          sessionData,
           loading: false,
           error: null,
         })
@@ -307,6 +377,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           user: null,
           profile: null,
           session: null,
+          sessionData: null,
           loading: false,
           error: null,
         })
@@ -329,9 +400,26 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     resetPassword,
     updatePassword,
     deleteAccount,
+    trackEvent,
   }
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+}
+
+// Alternative export for backward compatibility
+export const AuthProvider = EnhancedAuthProvider
+
+// MAIN HOOK EXPORT
+export function useOnboardingStatus() {
+  const { user, profile, loading } = useAuth()
+
+  return {
+    isLoggedIn: !!user,
+    isOnboarded: profile?.is_onboarded || false,
+    needsOnboarding: user && !profile?.is_onboarded,
+    loading,
+    userType: profile?.user_type,
+  }
 }
 
 export default EnhancedAuthProvider

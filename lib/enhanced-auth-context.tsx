@@ -4,7 +4,6 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import type { User, Session, AuthError } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
-import { enhancedSupabaseHelpers } from "@/lib/supabase/enhanced-client"
 import { toast } from "sonner"
 import type { Database } from "@/lib/supabase/types"
 
@@ -23,9 +22,9 @@ export interface AuthContextType {
   updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile | null>
   refreshProfile: () => Promise<void>
   completeOnboarding: (profileData: Partial<UserProfile>) => Promise<boolean>
+  uploadAvatar: (file: File) => Promise<string | null>
   isOnboarded: boolean
   supabase: ReturnType<typeof createClient>
-  trackEvent: (event: string, properties?: Record<string, any>) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -40,21 +39,24 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
   const supabase = createClient()
 
   // Load user profile from database
-  const loadUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
-    try {
-      const profileData = await enhancedSupabaseHelpers.getUserProfile(userId)
-      return profileData
-    } catch (err) {
-      console.error("Error loading user profile:", err)
-      return null
-    }
-  }, [])
+  const loadUserProfile = useCallback(
+    async (userId: string): Promise<UserProfile | null> => {
+      try {
+        const { data, error } = await supabase.from("user_profiles").select("*").eq("id", userId).single()
 
-  // Track events (placeholder for analytics)
-  const trackEvent = useCallback((event: string, properties?: Record<string, any>) => {
-    console.log("Event tracked:", event, properties)
-    // Here you would integrate with your analytics service
-  }, [])
+        if (error) {
+          console.error("Error loading user profile:", error)
+          return null
+        }
+
+        return data
+      } catch (err) {
+        console.error("Error loading user profile:", err)
+        return null
+      }
+    },
+    [supabase],
+  )
 
   // Initialize auth state
   useEffect(() => {
@@ -262,15 +264,25 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       try {
         setError(null)
 
-        const updatedProfile = await enhancedSupabaseHelpers.updateUserProfile(user.id, updates)
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id)
+          .select()
+          .single()
 
-        if (updatedProfile) {
-          setProfile(updatedProfile)
-          toast.success("Profile updated successfully!")
-          return updatedProfile
+        if (error) {
+          console.error("Error updating profile:", error)
+          toast.error("Failed to update profile")
+          return null
         }
 
-        return null
+        setProfile(data)
+        toast.success("Profile updated successfully!")
+        return data
       } catch (err) {
         console.error("Error updating profile:", err)
         setError(err as AuthError)
@@ -278,7 +290,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         return null
       }
     },
-    [user?.id],
+    [user?.id, supabase],
   )
 
   // Refresh profile function
@@ -301,15 +313,26 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       try {
         setError(null)
 
-        const updatedProfile = await enhancedSupabaseHelpers.completeOnboarding(user.id, profileData)
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .update({
+            ...profileData,
+            is_onboarded: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id)
+          .select()
+          .single()
 
-        if (updatedProfile) {
-          setProfile(updatedProfile)
-          toast.success("Onboarding completed!")
-          return true
+        if (error) {
+          console.error("Error completing onboarding:", error)
+          toast.error("Failed to complete onboarding")
+          return false
         }
 
-        return false
+        setProfile(data)
+        toast.success("Onboarding completed!")
+        return true
       } catch (err) {
         console.error("Error completing onboarding:", err)
         setError(err as AuthError)
@@ -317,7 +340,43 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         return false
       }
     },
-    [user?.id],
+    [user?.id, supabase],
+  )
+
+  // Upload avatar function
+  const uploadAvatar = useCallback(
+    async (file: File): Promise<string | null> => {
+      if (!user?.id) return null
+
+      try {
+        const fileExt = file.name.split(".").pop()
+        const fileName = `${user.id}-${Math.random()}.${fileExt}`
+        const filePath = `avatars/${fileName}`
+
+        const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true,
+        })
+
+        if (uploadError) {
+          console.error("Error uploading avatar:", uploadError)
+          toast.error("Failed to upload avatar")
+          return null
+        }
+
+        const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
+
+        // Update user profile with new avatar URL
+        await updateProfile({ avatar_url: data.publicUrl })
+
+        return data.publicUrl
+      } catch (err) {
+        console.error("Error uploading avatar:", err)
+        toast.error("Failed to upload avatar")
+        return null
+      }
+    },
+    [user?.id, supabase, updateProfile],
   )
 
   // Computed values
@@ -336,9 +395,9 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     updateProfile,
     refreshProfile,
     completeOnboarding,
+    uploadAvatar,
     isOnboarded,
     supabase,
-    trackEvent,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -382,7 +441,7 @@ export function useUserProfile(userId?: string): {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, supabase } = useAuth()
 
   const refresh = useCallback(async () => {
     const targetUserId = userId || user?.id
@@ -397,15 +456,26 @@ export function useUserProfile(userId?: string): {
       setLoading(true)
       setError(null)
 
-      const profileData = await enhancedSupabaseHelpers.getUserProfile(targetUserId)
-      setProfile(profileData)
+      const { data, error: fetchError } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", targetUserId)
+        .single()
+
+      if (fetchError) {
+        console.error("Error fetching user profile:", fetchError)
+        setError(fetchError.message)
+        return
+      }
+
+      setProfile(data)
     } catch (err) {
       console.error("Error fetching user profile:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
     } finally {
       setLoading(false)
     }
-  }, [userId, user?.id])
+  }, [userId, user?.id, supabase])
 
   useEffect(() => {
     refresh()

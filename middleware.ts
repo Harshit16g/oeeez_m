@@ -1,29 +1,59 @@
-import { updateSession } from "@/lib/supabase/middleware"
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-export const runtime = "nodejs"
+export async function middleware(request: NextRequest) {
+  // Get the pathname of the request (e.g. /, /protected)
+  const path = request.nextUrl.pathname
 
-export async function middleware(request: any) {
-  // Allow access to public routes without authentication
-  const publicRoutes = ["/", "/login", "/signup", "/auth", "/about", "/contact", "/help", "/terms", "/privacy", "/faq"]
-  const isPublicRoute = publicRoutes.some((route) => request.nextUrl.pathname.startsWith(route))
+  // Define public paths that don't require authentication
+  const publicPaths = [
+    "/",
+    "/login",
+    "/signup",
+    "/auth/callback",
+    "/auth/verify",
+    "/auth/verify-error",
+    "/auth/verify-success",
+    "/artists", // Allow browsing artists without auth
+  ]
 
-  if (isPublicRoute) {
-    return await updateSession(request)
+  // Check if the path is public
+  const isPublicPath = publicPaths.some((publicPath) => {
+    if (publicPath === "/") {
+      return path === "/"
+    }
+    return path.startsWith(publicPath)
+  })
+
+  // If it's a public path, allow the request to continue
+  if (isPublicPath) {
+    return NextResponse.next()
   }
 
-  // For protected routes, ensure user is authenticated
-  return await updateSession(request)
+  // For protected paths, check for session cookie
+  const sessionCookie = request.cookies.get("sb-access-token")
+
+  // If no session cookie, redirect to login
+  if (!sessionCookie) {
+    const loginUrl = new URL("/login", request.url)
+    loginUrl.searchParams.set("redirectTo", path)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Allow the request to continue
+  return NextResponse.next()
 }
 
 export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }

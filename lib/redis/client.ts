@@ -221,4 +221,33 @@ class RedisClient {
 }
 
 export const redisClient = RedisClient.getInstance()
+
+// Initialize Redis connection - EXPORTED FUNCTION
+export async function initializeRedis(): Promise<void> {
+  try {
+    // Only initialize Redis if it's enabled and we have a URL
+    if (!process.env.REDIS_URL || process.env.ENABLE_REDIS_CACHE !== "true") {
+      console.log("⚠️ Redis disabled or URL not provided")
+      return
+    }
+
+    await redisClient.connect()
+    console.log("🚀 Redis initialization completed")
+  } catch (error) {
+    console.error("❌ Redis initialization failed:", error)
+    // Don't throw error to prevent app from crashing
+    // The app should work without Redis, just with reduced performance
+  }
+}
+
+// Graceful shutdown
+export async function shutdownRedis(): Promise<void> {
+  try {
+    await redisClient.disconnect()
+    console.log("✅ Redis shutdown completed")
+  } catch (error) {
+    console.error("❌ Redis shutdown failed:", error)
+  }
+}
+
 export default redisClient

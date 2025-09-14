@@ -6,7 +6,6 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { EnhancedAuthProvider } from "@/lib/enhanced-auth-context"
-import { initializeRedis } from "@/lib/redis/client"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -54,14 +53,21 @@ export const metadata: Metadata = {
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION,
   },
-    generator: 'v0.app'
+  generator: "v0.app",
 }
 
-// Initialize Redis on app startup
+// Safe Redis initialization only on server side
 if (typeof window === "undefined") {
-  initializeRedis().catch((error) => {
-    console.error("Failed to initialize Redis:", error)
-  })
+  // Dynamic import to avoid bundling Redis in client-side code
+  import("@/lib/redis/client")
+    .then(({ initializeRedis }) => {
+      initializeRedis().catch((error) => {
+        console.error("Failed to initialize Redis:", error)
+      })
+    })
+    .catch(() => {
+      console.log("Redis not available, continuing without caching")
+    })
 }
 
 export default function RootLayout({

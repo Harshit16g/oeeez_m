@@ -1,38 +1,38 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+// Force Node.js runtime
+export const runtime = "nodejs"
+
 export async function GET(request: NextRequest) {
   try {
-    // Try to get IP from various headers
+    // Get IP from various headers
     const forwarded = request.headers.get("x-forwarded-for")
-    const realIP = request.headers.get("x-real-ip")
-    const cfIP = request.headers.get("cf-connecting-ip")
+    const realIp = request.headers.get("x-real-ip")
+    const cfConnectingIp = request.headers.get("cf-connecting-ip")
 
-    let ip = "unknown"
+    // Priority order: CF-Connecting-IP > X-Real-IP > X-Forwarded-For > fallback
+    let ip = cfConnectingIp || realIp || forwarded?.split(",")[0] || "unknown"
 
-    if (forwarded) {
-      // x-forwarded-for can contain multiple IPs, get the first one
-      ip = forwarded.split(",")[0].trim()
-    } else if (realIP) {
-      ip = realIP
-    } else if (cfIP) {
-      ip = cfIP
-    } else if (request.ip) {
-      ip = request.ip
-    }
+    // Clean up the IP
+    ip = ip.trim()
 
     return NextResponse.json({
       ip,
       headers: {
-        forwarded,
-        realIP,
-        cfIP,
+        "x-forwarded-for": forwarded,
+        "x-real-ip": realIp,
+        "cf-connecting-ip": cfConnectingIp,
       },
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error("Error getting client IP:", error)
-    return NextResponse.json({
-      ip: "unknown",
-      error: "Failed to determine IP",
-    })
+    return NextResponse.json(
+      {
+        ip: "unknown",
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 },
+    )
   }
 }

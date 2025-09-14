@@ -22,7 +22,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+// MAIN EXPORT - EnhancedAuthProvider
+export function EnhancedAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
@@ -95,9 +96,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true)
 
-      // Clean up Redis session
-      if (session) {
-        await sessionManager.deleteSession(session.access_token)
+      // Clean up Redis session (only if Redis is enabled)
+      if (session && process.env.ENABLE_REDIS_CACHE === "true") {
+        try {
+          await sessionManager.deleteSession(session.access_token)
+        } catch (redisError) {
+          console.warn("Failed to clean up Redis session:", redisError)
+          // Continue with sign out even if Redis cleanup fails
+        }
       }
 
       const { error } = await supabase.auth.signOut()
@@ -248,10 +254,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// Alternative export for backward compatibility
+export const AuthProvider = EnhancedAuthProvider
+
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error("useAuth must be used within an EnhancedAuthProvider")
   }
   return context
 }

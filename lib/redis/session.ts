@@ -1,5 +1,11 @@
-import { redisClient } from "./client"
-import { REDIS_CONFIG } from "./config"
+export const runtime = "nodejs"
+
+import { getRedis } from "./client"
+
+const SESSION_PREFIX = process.env.REDIS_SESSION_PREFIX || "session:"
+const USER_PREFIX = process.env.REDIS_USER_PREFIX || "user:"
+const SESSION_TTL = Number(process.env.SESSION_TTL ?? 86400)
+const MAX_SESSIONS_PER_USER = Number(process.env.MAX_SESSIONS_PER_USER ?? 5)
 
 export interface SessionData {
   userId: string
@@ -14,270 +20,245 @@ export interface SessionData {
   metadata?: Record<string, any>
 }
 
-export interface SessionOptions {
-  ttl?: number
-  maxSessions?: number
+export async function createSession(
+  userId: string,
+  sessionData: Omit<SessionData, "createdAt" | "lastActivity">,
+): Promise<string | null> {
+  if (process.env.ENABLE_REDIS_SESSIONS !== "true") return null
+
+  try {
+    const redis = getRedis()
+    if (!redis) return null
+
+    const now = Date.now()
+    const sessionId = `${SESSION_PREFIX}${userId}:${now}`
+    const userSessionsKey = `${USER_PREFIX}${userId}:sessions`
+
+    const fullSessionData: SessionData = {
+      ...sessionData,
+      createdAt: now,
+      lastActivity: now,
+    }
+
+    // Store the session
+    await redis.setex(sessionId, SESSION_TTL, JSON.stringify(fullSessionData))
+
+    // Manage user sessions list
+    const userSessions = await redis.lrange(userSessionsKey, 0, -1)
+
+    // Add new session to user's session list
+    await redis.lpush(userSessionsKey, sessionId)
+    await redis.expire(userSessionsKey, SESSION_TTL)
+
+    // Enforce max sessions per user
+    if (userSessions.length >= MAX_SESSIONS_PER_USER) {
+      const sessionsToRemove = userSessions.slice(MAX_SESSIONS_PER_USER - 1)
+      for (const oldSessionId of sessionsToRemove) {
+        await redis.del(oldSessionId)
+        await redis.lrem(userSessionsKey, 1, oldSessionId)
+      }
+    }
+
+    console.log(`📝 Session created: ${sessionId} for user ${userId}`)
+    return sessionId
+  } catch (err) {
+    console.error("Redis createSession error:", err)
+    return null
+  }
 }
 
-export class SessionManager {
-  private static instance: SessionManager
-  private enabled: boolean
+export async function getSession(sessionId: string): Promise<SessionData | null> {
+  if (process.env.ENABLE_REDIS_SESSIONS !== "true") return null
 
-  private constructor() {
-    this.enabled = process.env.ENABLE_REDIS_CACHE === "true"
+  try {
+    const redis = getRedis()
+    if (!redis) return null
+
+    const data = await redis.get(sessionId)
+    if (!data) return null
+
+    const sessionData: SessionData = JSON.parse(data)
+
+    // Update last activity
+    sessionData.lastActivity = Date.now()
+    await redis.setex(sessionId, SESSION_TTL, JSON.stringify(sessionData))
+
+    return sessionData
+  } catch (err) {
+    console.error("Redis getSession error:", err)
+    return null
   }
+}
 
-  public static getInstance(): SessionManager {
-    if (!SessionManager.instance) {
-      SessionManager.instance = new SessionManager()
+export async function updateSession(sessionId: string, updates: Partial<SessionData>): Promise<boolean> {
+  if (process.env.ENABLE_REDIS_SESSIONS !== "true") return false
+
+  try {
+    const redis = getRedis()
+    if (!redis) return false
+
+    const existingData = await redis.get(sessionId)
+    if (!existingData) return false
+
+    const sessionData: SessionData = JSON.parse(existingData)
+    const updatedData: SessionData = {
+      ...sessionData,
+      ...updates,
+      lastActivity: Date.now(),
     }
-    return SessionManager.instance
-  }
 
-  private getSessionKey(sessionId: string): string {
-    return `${REDIS_CONFIG.session.prefix}${sessionId}`
+    await redis.setex(sessionId, SESSION_TTL, JSON.stringify(updatedData))
+    return true
+  } catch (err) {
+    console.error("Redis updateSession error:", err)
+    return false
   }
+}
 
-  private getUserSessionsKey(userId: string): string {
-    return `${REDIS_CONFIG.session.prefix}user:${userId}`
-  }
+export async function deleteSession(sessionId: string): Promise<boolean> {
+  if (process.env.ENABLE_REDIS_SESSIONS !== "true") return false
 
-  public async createSession(
-    sessionId: string,
-    sessionData: Omit<SessionData, "createdAt" | "lastActivity">,
-    options: SessionOptions = {},
-  ): Promise<void> {
-    if (!this.enabled || !redisClient.isEnabled()) {
-      return
+  try {
+    const redis = getRedis()
+    if (!redis) return false
+
+    // Get session data to find user ID
+    const sessionData = await getSession(sessionId)
+    if (sessionData) {
+      const userSessionsKey = `${USER_PREFIX}${sessionData.userId}:sessions`
+      await redis.lrem(userSessionsKey, 1, sessionId)
     }
 
-    try {
-      const now = Date.now()
-      const ttl = options.ttl || REDIS_CONFIG.session.ttl
-      const maxSessions = options.maxSessions || Number.parseInt(process.env.MAX_SESSIONS_PER_USER || "5")
+    // Delete the session
+    await redis.del(sessionId)
+    console.log(`🗑️ Session deleted: ${sessionId}`)
+    return true
+  } catch (err) {
+    console.error("Redis deleteSession error:", err)
+    return false
+  }
+}
 
-      const fullSessionData: SessionData = {
-        ...sessionData,
-        createdAt: now,
-        lastActivity: now,
+export async function deleteUserSessions(userId: string, exceptSessionId?: string): Promise<boolean> {
+  if (process.env.ENABLE_REDIS_SESSIONS !== "true") return false
+
+  try {
+    const redis = getRedis()
+    if (!redis) return false
+
+    const userSessionsKey = `${USER_PREFIX}${userId}:sessions`
+    const sessionIds = await redis.lrange(userSessionsKey, 0, -1)
+
+    // Delete all user sessions except the specified one
+    for (const sessionId of sessionIds) {
+      if (sessionId !== exceptSessionId) {
+        await redis.del(sessionId)
+        await redis.lrem(userSessionsKey, 1, sessionId)
       }
-
-      const sessionKey = this.getSessionKey(sessionId)
-      const userSessionsKey = this.getUserSessionsKey(sessionData.userId)
-
-      // Store the session
-      await redisClient.set(sessionKey, fullSessionData, ttl)
-
-      // Manage user sessions list
-      const userSessions = (await redisClient.get<string[]>(userSessionsKey)) || []
-
-      // Add new session to user's session list
-      if (!userSessions.includes(sessionId)) {
-        userSessions.push(sessionId)
-
-        // Enforce max sessions per user
-        if (userSessions.length > maxSessions) {
-          const sessionsToRemove = userSessions.splice(0, userSessions.length - maxSessions)
-          for (const oldSessionId of sessionsToRemove) {
-            await this.deleteSession(oldSessionId)
-          }
-        }
-
-        await redisClient.set(userSessionsKey, userSessions, ttl)
-      }
-    } catch (error) {
-      console.error(`Session creation error for ${sessionId}:`, error)
     }
+
+    console.log(`🧹 Deleted all sessions for user ${userId} except ${exceptSessionId || "none"}`)
+    return true
+  } catch (err) {
+    console.error("Redis deleteUserSessions error:", err)
+    return false
   }
+}
 
-  public async getSession(sessionId: string): Promise<SessionData | null> {
-    if (!this.enabled || !redisClient.isEnabled()) {
-      return null
-    }
+export async function getUserSessions(userId: string): Promise<SessionData[]> {
+  if (process.env.ENABLE_REDIS_SESSIONS !== "true") return []
 
-    try {
-      const sessionKey = this.getSessionKey(sessionId)
-      const sessionData = await redisClient.get<SessionData>(sessionKey)
+  try {
+    const redis = getRedis()
+    if (!redis) return []
 
+    const userSessionsKey = `${USER_PREFIX}${userId}:sessions`
+    const sessionIds = await redis.lrange(userSessionsKey, 0, -1)
+
+    const sessions: SessionData[] = []
+    for (const sessionId of sessionIds) {
+      const sessionData = await getSession(sessionId)
       if (sessionData) {
-        // Update last activity
-        sessionData.lastActivity = Date.now()
-        await redisClient.set(sessionKey, sessionData, REDIS_CONFIG.session.ttl)
+        sessions.push(sessionData)
       }
-
-      return sessionData
-    } catch (error) {
-      console.error(`Session retrieval error for ${sessionId}:`, error)
-      return null
     }
+
+    return sessions.sort((a, b) => b.lastActivity - a.lastActivity)
+  } catch (err) {
+    console.error("Redis getUserSessions error:", err)
+    return []
+  }
+}
+
+export async function cleanupExpiredSessions(): Promise<number> {
+  if (process.env.ENABLE_REDIS_SESSIONS !== "true") return 0
+
+  try {
+    const redis = getRedis()
+    if (!redis) return 0
+
+    const pattern = `${SESSION_PREFIX}*`
+    const keys = await redis.keys(pattern)
+    let cleanedCount = 0
+
+    for (const key of keys) {
+      const sessionData = await getSession(key)
+      if (sessionData && sessionData.expiresAt < Date.now()) {
+        await deleteSession(key)
+        cleanedCount++
+      }
+    }
+
+    console.log(`🧹 Cleaned up ${cleanedCount} expired sessions`)
+    return cleanedCount
+  } catch (err) {
+    console.error("Session cleanup error:", err)
+    return 0
+  }
+}
+
+export async function getSessionStats(): Promise<{
+  totalSessions: number
+  activeSessions: number
+  expiredSessions: number
+  userCount: number
+}> {
+  const stats = {
+    totalSessions: 0,
+    activeSessions: 0,
+    expiredSessions: 0,
+    userCount: 0,
   }
 
-  public async updateSession(sessionId: string, updates: Partial<SessionData>): Promise<void> {
-    if (!this.enabled || !redisClient.isEnabled()) {
-      return
-    }
+  if (process.env.ENABLE_REDIS_SESSIONS !== "true") return stats
 
-    try {
-      const sessionKey = this.getSessionKey(sessionId)
-      const existingSession = await redisClient.get<SessionData>(sessionKey)
+  try {
+    const redis = getRedis()
+    if (!redis) return stats
 
-      if (existingSession) {
-        const updatedSession: SessionData = {
-          ...existingSession,
-          ...updates,
-          lastActivity: Date.now(),
-        }
+    const sessionPattern = `${SESSION_PREFIX}*`
+    const userPattern = `${USER_PREFIX}*:sessions`
 
-        await redisClient.set(sessionKey, updatedSession, REDIS_CONFIG.session.ttl)
-      }
-    } catch (error) {
-      console.error(`Session update error for ${sessionId}:`, error)
-    }
-  }
+    const sessionKeys = await redis.keys(sessionPattern)
+    const userKeys = await redis.keys(userPattern)
 
-  public async deleteSession(sessionId: string): Promise<void> {
-    if (!this.enabled || !redisClient.isEnabled()) {
-      return
-    }
+    stats.totalSessions = sessionKeys.length
+    stats.userCount = userKeys.length
 
-    try {
-      const sessionKey = this.getSessionKey(sessionId)
-      const sessionData = await redisClient.get<SessionData>(sessionKey)
-
+    const now = Date.now()
+    for (const key of sessionKeys) {
+      const sessionData = await getSession(key)
       if (sessionData) {
-        // Remove from user's session list
-        const userSessionsKey = this.getUserSessionsKey(sessionData.userId)
-        const userSessions = (await redisClient.get<string[]>(userSessionsKey)) || []
-        const updatedSessions = userSessions.filter((id) => id !== sessionId)
-
-        if (updatedSessions.length > 0) {
-          await redisClient.set(userSessionsKey, updatedSessions, REDIS_CONFIG.session.ttl)
+        if (sessionData.expiresAt > now) {
+          stats.activeSessions++
         } else {
-          await redisClient.del(userSessionsKey)
+          stats.expiredSessions++
         }
       }
-
-      // Delete the session
-      await redisClient.del(sessionKey)
-    } catch (error) {
-      console.error(`Session deletion error for ${sessionId}:`, error)
     }
+  } catch (err) {
+    console.error("Session stats error:", err)
   }
 
-  public async deleteUserSessions(userId: string): Promise<void> {
-    if (!this.enabled || !redisClient.isEnabled()) {
-      return
-    }
-
-    try {
-      const userSessionsKey = this.getUserSessionsKey(userId)
-      const userSessions = (await redisClient.get<string[]>(userSessionsKey)) || []
-
-      // Delete all user sessions
-      for (const sessionId of userSessions) {
-        const sessionKey = this.getSessionKey(sessionId)
-        await redisClient.del(sessionKey)
-      }
-
-      // Delete user sessions list
-      await redisClient.del(userSessionsKey)
-    } catch (error) {
-      console.error(`User sessions deletion error for ${userId}:`, error)
-    }
-  }
-
-  public async getUserSessions(userId: string): Promise<SessionData[]> {
-    if (!this.enabled || !redisClient.isEnabled()) {
-      return []
-    }
-
-    try {
-      const userSessionsKey = this.getUserSessionsKey(userId)
-      const sessionIds = (await redisClient.get<string[]>(userSessionsKey)) || []
-
-      const sessions: SessionData[] = []
-      for (const sessionId of sessionIds) {
-        const sessionData = await this.getSession(sessionId)
-        if (sessionData) {
-          sessions.push(sessionData)
-        }
-      }
-
-      return sessions
-    } catch (error) {
-      console.error(`Get user sessions error for ${userId}:`, error)
-      return []
-    }
-  }
-
-  public async cleanupExpiredSessions(): Promise<number> {
-    if (!this.enabled || !redisClient.isEnabled()) {
-      return 0
-    }
-
-    try {
-      const pattern = `${REDIS_CONFIG.session.prefix}*`
-      const keys = await redisClient.keys(pattern)
-      let cleanedCount = 0
-
-      for (const key of keys) {
-        if (key.includes(":user:")) continue // Skip user session lists
-
-        const sessionData = await redisClient.get<SessionData>(key)
-        if (sessionData && sessionData.expiresAt < Date.now()) {
-          const sessionId = key.replace(REDIS_CONFIG.session.prefix, "")
-          await this.deleteSession(sessionId)
-          cleanedCount++
-        }
-      }
-
-      return cleanedCount
-    } catch (error) {
-      console.error("Session cleanup error:", error)
-      return 0
-    }
-  }
-
-  public async getSessionStats(): Promise<{
-    totalSessions: number
-    activeSessions: number
-    expiredSessions: number
-  }> {
-    const stats = {
-      totalSessions: 0,
-      activeSessions: 0,
-      expiredSessions: 0,
-    }
-
-    if (!this.enabled || !redisClient.isConnected()) {
-      return stats
-    }
-
-    try {
-      const pattern = `${REDIS_CONFIG.session.prefix}*`
-      const keys = await redisClient.keys(pattern)
-      const now = Date.now()
-
-      for (const key of keys) {
-        if (key.includes(":user:")) continue // Skip user session lists
-
-        const sessionData = await redisClient.get<SessionData>(key)
-        if (sessionData) {
-          stats.totalSessions++
-          if (sessionData.expiresAt > now) {
-            stats.activeSessions++
-          } else {
-            stats.expiredSessions++
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Session stats error:", error)
-    }
-
-    return stats
-  }
+  return stats
 }
-
-export const sessionManager = SessionManager.getInstance()
-export default sessionManager

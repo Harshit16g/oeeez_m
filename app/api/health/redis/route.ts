@@ -1,38 +1,45 @@
-import { NextResponse } from "next/server"
-import { redisClient } from "@/lib/redis/client"
-
-// Force Node.js runtime for Redis compatibility
 export const runtime = "nodejs"
 
-export async function GET() {
+import { type NextRequest, NextResponse } from "next/server"
+import { healthCheck } from "@/lib/redis/client"
+import { getSessionStats } from "@/lib/redis/session"
+import { getRateLimitStats } from "@/lib/redis/rate-limit"
+import { cacheManager } from "@/lib/redis/cache"
+
+export async function GET(request: NextRequest) {
   try {
-    const health = await redisClient.healthCheck()
+    const [redisHealth, sessionStats, rateLimitStats, cacheStats] = await Promise.all([
+      healthCheck(),
+      getSessionStats(),
+      getRateLimitStats(),
+      cacheManager.getStats(),
+    ])
 
-    const response = {
-      status: health.status,
+    const healthData = {
+      redis: redisHealth,
+      sessions: sessionStats,
+      rateLimit: rateLimitStats,
+      cache: cacheStats,
       timestamp: new Date().toISOString(),
-      latency: health.latency,
-      connected: redisClient.isConnected(),
-      redis_enabled: process.env.ENABLE_REDIS_CACHE === "true",
-      redis_url_configured: !!process.env.REDIS_URL,
+      environment: {
+        enableRedisCache: process.env.ENABLE_REDIS_CACHE === "true",
+        enableRedisSessions: process.env.ENABLE_REDIS_SESSIONS === "true",
+        enableRateLimit: process.env.ENABLE_RATE_LIMITING === "true",
+        enableAnalytics: process.env.ENABLE_ANALYTICS === "true",
+      },
     }
 
-    if (health.status === "healthy") {
-      return NextResponse.json(response)
-    } else {
-      return NextResponse.json(response, { status: 503 })
-    }
+    return NextResponse.json(healthData, { status: 200 })
   } catch (error) {
+    console.error("Redis health check error:", error)
+
     return NextResponse.json(
       {
-        status: "error",
+        error: "Health check failed",
+        message: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : "Unknown error",
-        connected: false,
-        redis_enabled: process.env.ENABLE_REDIS_CACHE === "true",
-        redis_url_configured: !!process.env.REDIS_URL,
       },
-      { status: 503 },
+      { status: 500 },
     )
   }
 }

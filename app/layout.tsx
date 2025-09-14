@@ -61,9 +61,7 @@ if (typeof window === "undefined") {
   // Dynamic import to avoid bundling Redis in client-side code
   import("@/lib/redis/client")
     .then(({ initializeRedis }) => {
-      initializeRedis().catch((error) => {
-        console.error("Failed to initialize Redis:", error)
-      })
+      initializeRedis()
     })
     .catch(() => {
       console.log("Redis not available, continuing without caching")

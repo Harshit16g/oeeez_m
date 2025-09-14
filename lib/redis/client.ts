@@ -1,12 +1,72 @@
 import Redis from "ioredis"
-import { REDIS_CONFIG } from "./config"
+
+// Redis configuration interface
+interface RedisConfig {
+  connection: {
+    url?: string
+    connectTimeout: number
+    commandTimeout: number
+    retryDelayOnFailover: number
+    enableReadyCheck: boolean
+    maxRetriesPerRequest: number
+    lazyConnect: boolean
+    keepAlive: number
+    family: number
+  }
+  cache: {
+    defaultTTL: number
+    shortTTL: number
+    mediumTTL: number
+    longTTL: number
+    prefix: string
+  }
+  session: {
+    ttl: number
+    prefix: string
+  }
+  rateLimit: {
+    prefix: string
+  }
+}
+
+// Default Redis configuration
+const REDIS_CONFIG: RedisConfig = {
+  connection: {
+    url: process.env.REDIS_URL,
+    connectTimeout: Number.parseInt(process.env.REDIS_CONNECT_TIMEOUT || "10000"),
+    commandTimeout: Number.parseInt(process.env.REDIS_COMMAND_TIMEOUT || "5000"),
+    retryDelayOnFailover: Number.parseInt(process.env.REDIS_RETRY_DELAY || "100"),
+    enableReadyCheck: process.env.REDIS_READY_CHECK !== "false",
+    maxRetriesPerRequest: Number.parseInt(process.env.REDIS_MAX_RETRIES || "3"),
+    lazyConnect: process.env.REDIS_LAZY_CONNECT === "true",
+    keepAlive: Number.parseInt(process.env.REDIS_KEEP_ALIVE || "30000"),
+    family: Number.parseInt(process.env.REDIS_FAMILY || "4"),
+  },
+  cache: {
+    defaultTTL: Number.parseInt(process.env.CACHE_TTL_MEDIUM || "1800"),
+    shortTTL: Number.parseInt(process.env.CACHE_TTL_SHORT || "300"),
+    mediumTTL: Number.parseInt(process.env.CACHE_TTL_MEDIUM || "1800"),
+    longTTL: Number.parseInt(process.env.CACHE_TTL_LONG || "7200"),
+    prefix: process.env.REDIS_CACHE_PREFIX || "artistly:cache:",
+  },
+  session: {
+    ttl: Number.parseInt(process.env.SESSION_TTL || "86400"),
+    prefix: process.env.REDIS_SESSION_PREFIX || "artistly:session:",
+  },
+  rateLimit: {
+    prefix: process.env.REDIS_RATE_LIMIT_PREFIX || "artistly:ratelimit:",
+  },
+}
 
 class RedisClient {
   private static instance: RedisClient
   private redis: Redis | null = null
   private connected = false
+  private enabled = false
 
-  private constructor() {}
+  private constructor() {
+    this.enabled = process.env.ENABLE_REDIS_CACHE === "true" && !!process.env.REDIS_URL
+  }
 
   public static getInstance(): RedisClient {
     if (!RedisClient.instance) {
@@ -15,16 +75,21 @@ class RedisClient {
     return RedisClient.instance
   }
 
-  public async connect(): Promise<Redis> {
+  public isEnabled(): boolean {
+    return this.enabled
+  }
+
+  public async connect(): Promise<Redis | null> {
+    if (!this.enabled) {
+      console.log("⚠️ Redis is disabled or URL not provided")
+      return null
+    }
+
     if (this.redis && this.connected) {
       return this.redis
     }
 
     try {
-      if (!process.env.REDIS_URL) {
-        throw new Error("REDIS_URL environment variable is not set")
-      }
-
       this.redis = new Redis(REDIS_CONFIG.connection.url!, {
         connectTimeout: REDIS_CONFIG.connection.connectTimeout,
         commandTimeout: REDIS_CONFIG.connection.commandTimeout,
@@ -68,7 +133,8 @@ class RedisClient {
       return this.redis
     } catch (error) {
       console.error("Failed to connect to Redis:", error)
-      throw error
+      this.enabled = false
+      return null
     }
   }
 
@@ -85,17 +151,31 @@ class RedisClient {
   }
 
   public isConnected(): boolean {
-    return this.connected && this.redis?.status === "ready"
+    return this.enabled && this.connected && this.redis?.status === "ready"
   }
 
   public async healthCheck(): Promise<{ status: string; latency?: number; error?: string }> {
+    if (!this.enabled) {
+      return {
+        status: "disabled",
+        error: "Redis is disabled",
+      }
+    }
+
     try {
       if (!this.redis) {
         await this.connect()
       }
 
+      if (!this.redis) {
+        return {
+          status: "unhealthy",
+          error: "Failed to connect to Redis",
+        }
+      }
+
       const start = Date.now()
-      await this.redis!.ping()
+      await this.redis.ping()
       const latency = Date.now() - start
 
       return {
@@ -110,33 +190,40 @@ class RedisClient {
     }
   }
 
-  // Helper methods
+  // Helper methods with safety checks
   public async set(key: string, value: any, ttl?: number): Promise<void> {
+    if (!this.enabled) return
+
     try {
       if (!this.redis) {
         await this.connect()
       }
+
+      if (!this.redis) return
 
       const serializedValue = JSON.stringify(value)
 
       if (ttl) {
-        await this.redis!.setex(key, ttl, serializedValue)
+        await this.redis.setex(key, ttl, serializedValue)
       } else {
-        await this.redis!.set(key, serializedValue)
+        await this.redis.set(key, serializedValue)
       }
     } catch (error) {
       console.error(`Redis SET error for key ${key}:`, error)
-      throw error
     }
   }
 
   public async get<T = any>(key: string): Promise<T | null> {
+    if (!this.enabled) return null
+
     try {
       if (!this.redis) {
         await this.connect()
       }
 
-      const value = await this.redis!.get(key)
+      if (!this.redis) return null
+
+      const value = await this.redis.get(key)
 
       if (value === null) {
         return null
@@ -150,29 +237,37 @@ class RedisClient {
   }
 
   public async del(key: string | string[]): Promise<number> {
+    if (!this.enabled) return 0
+
     try {
       if (!this.redis) {
         await this.connect()
       }
 
+      if (!this.redis) return 0
+
       if (Array.isArray(key)) {
-        return await this.redis!.del(...key)
+        return await this.redis.del(...key)
       } else {
-        return await this.redis!.del(key)
+        return await this.redis.del(key)
       }
     } catch (error) {
       console.error(`Redis DEL error for key ${key}:`, error)
-      throw error
+      return 0
     }
   }
 
   public async exists(key: string): Promise<boolean> {
+    if (!this.enabled) return false
+
     try {
       if (!this.redis) {
         await this.connect()
       }
 
-      const result = await this.redis!.exists(key)
+      if (!this.redis) return false
+
+      const result = await this.redis.exists(key)
       return result === 1
     } catch (error) {
       console.error(`Redis EXISTS error for key ${key}:`, error)
@@ -181,25 +276,32 @@ class RedisClient {
   }
 
   public async expire(key: string, ttl: number): Promise<void> {
+    if (!this.enabled) return
+
     try {
       if (!this.redis) {
         await this.connect()
       }
 
-      await this.redis!.expire(key, ttl)
+      if (!this.redis) return
+
+      await this.redis.expire(key, ttl)
     } catch (error) {
       console.error(`Redis EXPIRE error for key ${key}:`, error)
-      throw error
     }
   }
 
   public async keys(pattern: string): Promise<string[]> {
+    if (!this.enabled) return []
+
     try {
       if (!this.redis) {
         await this.connect()
       }
 
-      return await this.redis!.keys(pattern)
+      if (!this.redis) return []
+
+      return await this.redis.keys(pattern)
     } catch (error) {
       console.error(`Redis KEYS error for pattern ${pattern}:`, error)
       return []
@@ -207,15 +309,18 @@ class RedisClient {
   }
 
   public async flushall(): Promise<void> {
+    if (!this.enabled) return
+
     try {
       if (!this.redis) {
         await this.connect()
       }
 
-      await this.redis!.flushall()
+      if (!this.redis) return
+
+      await this.redis.flushall()
     } catch (error) {
       console.error("Redis FLUSHALL error:", error)
-      throw error
     }
   }
 }
@@ -250,4 +355,5 @@ export async function shutdownRedis(): Promise<void> {
   }
 }
 
+export { REDIS_CONFIG }
 export default redisClient

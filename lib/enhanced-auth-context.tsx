@@ -176,6 +176,25 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     }
   }, [supabase])
 
+  // Load user profile
+  const loadUserProfile = useCallback(
+    async (userId: string) => {
+      try {
+        const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
+
+        if (error) {
+          console.error("Failed to load user profile:", error)
+          return
+        }
+
+        setProfile(data)
+      } catch (error) {
+        console.error("Profile loading error:", error)
+      }
+    },
+    [supabase],
+  )
+
   useEffect(() => {
     let mounted = true
 
@@ -189,6 +208,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           if (initialSession?.user) {
             setUser(initialSession.user)
             setSession(initialSession)
+            await loadUserProfile(initialSession.user.id)
           }
           setLoading(false)
         }
@@ -212,6 +232,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           if (session?.user) {
             setUser(session.user)
             setSession(session)
+            await loadUserProfile(session.user.id)
           }
           break
         case "SIGNED_OUT":
@@ -235,7 +256,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       mounted = false
       subscription.unsubscribe()
     }
-  }, [supabase])
+  }, [supabase, loadUserProfile])
 
   const value: AuthContextType = {
     user,

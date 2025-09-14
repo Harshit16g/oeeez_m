@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { EnhancedAuthProvider, useAuth } from "@/lib/enhanced-auth-context"
 
 export default function VerifySuccessPageWrapper() {
-  // Wrap the inner page with EnhancedAuthProvider
   return (
     <EnhancedAuthProvider>
       <VerifySuccessPage />
@@ -21,11 +20,9 @@ function VerifySuccessPage() {
 
   useEffect(() => {
     if (!loading) {
-      // Redirect authenticated users to the intended page
       if (user) {
         router.push(next)
       } else {
-        // If somehow no user is present, fallback to login
         router.push("/login")
       }
     }

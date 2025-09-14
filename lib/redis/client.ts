@@ -1,16 +1,13 @@
 // Redis client with completely safe disabled mode - no imports at all
 let redisInstance: any = null
 let isInitialized = false
+let isConnected = false
 
 export const runtime = "nodejs"
 
 const isRedisEnabled = process.env.ENABLE_REDIS_CACHE === "true"
 const isRateLimitEnabled = process.env.ENABLE_RATE_LIMITING === "true"
 const isSessionEnabled = process.env.ENABLE_REDIS_SESSIONS === "true"
-
-const isRedisAvailable = (): boolean => {
-  return isRedisEnabled && redisInstance !== null
-}
 
 export async function initializeRedis(): Promise<any> {
   if (isInitialized) return redisInstance
@@ -47,10 +44,20 @@ export async function initializeRedis(): Promise<any> {
       retryDelayOnFailover: 100,
     })
 
-    redisInstance.on("connect", () => console.log("✅ Redis connected"))
+    redisInstance.on("connect", () => {
+      console.log("✅ Redis connected")
+      isConnected = true
+    })
+
     redisInstance.on("ready", () => console.log("✅ Redis ready"))
-    redisInstance.on("error", (err: Error) => console.error("❌ Redis error:", err.message))
-    redisInstance.on("close", () => console.log("⚠️ Redis connection closed"))
+    redisInstance.on("error", (err: Error) => {
+      console.error("❌ Redis error:", err.message)
+      isConnected = false
+    })
+    redisInstance.on("close", () => {
+      console.log("⚠️ Redis connection closed")
+      isConnected = false
+    })
     redisInstance.on("reconnecting", () => console.log("🔄 Redis reconnecting..."))
 
     await redisInstance.ping()
@@ -204,6 +211,7 @@ export async function shutdownRedis(): Promise<void> {
     try {
       await redisInstance.quit()
       redisInstance = null
+      isConnected = false
       console.log("✅ Redis shutdown completed")
     } catch (err) {
       console.error("❌ Redis shutdown failed:", err)
@@ -211,6 +219,8 @@ export async function shutdownRedis(): Promise<void> {
   }
 }
 
-export { isRedisEnabled, isRateLimitEnabled, isSessionEnabled }
+export function isRedisAvailable() {
+  return isRedisEnabled && isConnected
+}
 
 export default getRedis

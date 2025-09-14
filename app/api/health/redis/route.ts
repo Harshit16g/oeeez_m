@@ -1,28 +1,36 @@
 import { NextResponse } from "next/server"
-import { getRedis, isRedisEnabled } from "@/lib/redis/client"
+import { getRedisClient } from "@/lib/redis/client"
+import { redisConfig } from "@/lib/redis/config"
 
 export const runtime = "nodejs"
 
 export async function GET() {
   try {
-    if (!isRedisEnabled) {
+    if (!redisConfig.enabled) {
       return NextResponse.json({
         status: "disabled",
         message: "Redis is disabled via environment variables",
-        timestamp: new Date().toISOString(),
+        config: {
+          enabled: false,
+          rateLimitEnabled: redisConfig.rateLimitEnabled,
+          sessionEnabled: redisConfig.sessionEnabled,
+        },
       })
     }
 
-    const redis = await getRedis()
+    const redis = await getRedisClient()
 
     if (!redis) {
       return NextResponse.json(
         {
-          status: "unavailable",
-          message: "Redis connection not available",
-          timestamp: new Date().toISOString(),
+          status: "error",
+          message: "Failed to connect to Redis",
+          config: {
+            enabled: redisConfig.enabled,
+            url: redisConfig.url ? "configured" : "missing",
+          },
         },
-        { status: 503 },
+        { status: 500 },
       )
     }
 
@@ -32,16 +40,28 @@ export async function GET() {
 
     return NextResponse.json({
       status: "healthy",
+      message: "Redis is connected and responding",
       ping: pingResult,
-      server_info: info.split("\r\n").slice(0, 5).join("\n"),
-      timestamp: new Date().toISOString(),
+      serverInfo: info.split("\r\n").slice(0, 5).join("\n"),
+      config: {
+        enabled: redisConfig.enabled,
+        rateLimitEnabled: redisConfig.rateLimitEnabled,
+        sessionEnabled: redisConfig.sessionEnabled,
+        defaultTTL: redisConfig.defaultTTL,
+      },
     })
   } catch (error) {
+    console.error("Redis health check failed:", error)
+
     return NextResponse.json(
       {
         status: "error",
-        message: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
+        message: "Redis health check failed",
+        error: error instanceof Error ? error.message : "Unknown error",
+        config: {
+          enabled: redisConfig.enabled,
+          url: redisConfig.url ? "configured" : "missing",
+        },
       },
       { status: 500 },
     )

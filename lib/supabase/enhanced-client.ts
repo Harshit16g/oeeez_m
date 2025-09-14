@@ -1,109 +1,211 @@
-import { createClient as createSupabaseClient } from "./client"
+import { createClient } from "./client"
+import type { Database } from "./types"
 
-export function createClient() {
-  return createSupabaseClient()
-}
+type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"]
+type UserProfileInsert = Database["public"]["Tables"]["user_profiles"]["Insert"]
+type UserProfileUpdate = Database["public"]["Tables"]["user_profiles"]["Update"]
 
-export const supabase = createClient()
+class EnhancedSupabaseHelpers {
+  private supabase = createClient()
 
-// Enhanced client with additional utilities
-export class EnhancedSupabaseClient {
-  private client: ReturnType<typeof createSupabaseClient>
-
-  constructor() {
-    this.client = createClient()
-  }
-
-  // User management
-  async getCurrentUser() {
+  async getUserProfile(userId: string): Promise<UserProfile | null> {
     try {
-      const {
-        data: { user },
-        error,
-      } = await this.client.auth.getUser()
-      if (error) throw error
-      return user
+      const { data, error } = await this.supabase.from("user_profiles").select("*").eq("id", userId).single()
+
+      if (error) {
+        console.error("Error fetching user profile:", error)
+        return null
+      }
+
+      return data
     } catch (error) {
-      console.error("Error getting current user:", error)
+      console.error("Error in getUserProfile:", error)
       return null
     }
   }
 
-  async getUserProfile(userId: string) {
+  async updateUserProfile(userId: string, updates: UserProfileUpdate): Promise<UserProfile | null> {
     try {
-      const { data, error } = await this.client.from("user_profiles").select("*").eq("id", userId).single()
+      const { data, error } = await this.supabase
+        .from("user_profiles")
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId)
+        .select()
+        .single()
 
-      if (error) throw error
+      if (error) {
+        console.error("Error updating user profile:", error)
+        return null
+      }
+
       return data
     } catch (error) {
-      console.error("Error getting user profile:", error)
+      console.error("Error in updateUserProfile:", error)
       return null
     }
   }
 
-  async updateUserProfile(userId: string, updates: any) {
+  async createUserProfile(profileData: UserProfileInsert): Promise<UserProfile | null> {
     try {
-      const { data, error } = await this.client.from("user_profiles").update(updates).eq("id", userId).select().single()
+      const { data, error } = await this.supabase.from("user_profiles").insert(profileData).select().single()
 
-      if (error) throw error
+      if (error) {
+        console.error("Error creating user profile:", error)
+        return null
+      }
+
       return data
     } catch (error) {
-      console.error("Error updating user profile:", error)
-      throw error
+      console.error("Error in createUserProfile:", error)
+      return null
     }
   }
 
-  // File upload
-  async uploadFile(bucket: string, path: string, file: File) {
+  async completeOnboarding(userId: string, profileData: Partial<UserProfile>): Promise<UserProfile | null> {
     try {
-      const { data, error } = await this.client.storage.from(bucket).upload(path, file, {
+      const { data, error } = await this.supabase
+        .from("user_profiles")
+        .update({
+          ...profileData,
+          is_onboarded: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error completing onboarding:", error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error("Error in completeOnboarding:", error)
+      return null
+    }
+  }
+
+  async checkOnboardingStatus(userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await this.supabase.from("user_profiles").select("is_onboarded").eq("id", userId).single()
+
+      if (error) {
+        console.error("Error checking onboarding status:", error)
+        return false
+      }
+
+      return data?.is_onboarded || false
+    } catch (error) {
+      console.error("Error in checkOnboardingStatus:", error)
+      return false
+    }
+  }
+
+  async uploadAvatar(userId: string, file: File): Promise<string | null> {
+    try {
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${userId}-${Math.random()}.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      const { error: uploadError } = await this.supabase.storage.from("avatars").upload(filePath, file, {
         cacheControl: "3600",
         upsert: true,
       })
 
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error("Error uploading file:", error)
-      throw error
-    }
-  }
+      if (uploadError) {
+        console.error("Error uploading avatar:", uploadError)
+        return null
+      }
 
-  async getPublicUrl(bucket: string, path: string) {
-    try {
-      const { data } = this.client.storage.from(bucket).getPublicUrl(path)
+      const { data } = this.supabase.storage.from("avatars").getPublicUrl(filePath)
+
+      // Update user profile with new avatar URL
+      await this.updateUserProfile(userId, { avatar_url: data.publicUrl })
 
       return data.publicUrl
     } catch (error) {
-      console.error("Error getting public URL:", error)
+      console.error("Error in uploadAvatar:", error)
       return null
     }
   }
 
-  // Real-time subscriptions
-  subscribeToUserProfile(userId: string, callback: (payload: any) => void) {
-    return this.client
-      .channel(`user_profile_${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_profiles",
-          filter: `id=eq.${userId}`,
-        },
-        callback,
-      )
-      .subscribe()
+  async deleteAvatar(userId: string, avatarUrl: string): Promise<boolean> {
+    try {
+      // Extract file path from URL
+      const urlParts = avatarUrl.split("/")
+      const fileName = urlParts[urlParts.length - 1]
+      const filePath = `avatars/${fileName}`
+
+      const { error } = await this.supabase.storage.from("avatars").remove([filePath])
+
+      if (error) {
+        console.error("Error deleting avatar:", error)
+        return false
+      }
+
+      // Update user profile to remove avatar URL
+      await this.updateUserProfile(userId, { avatar_url: null })
+
+      return true
+    } catch (error) {
+      console.error("Error in deleteAvatar:", error)
+      return false
+    }
   }
 
-  // Get the underlying client
-  getClient() {
-    return this.client
+  async getUserBookings(userId: string) {
+    try {
+      const { data, error } = await this.supabase
+        .from("bookings")
+        .select(`
+          *,
+          artists (
+            name,
+            avatar_url,
+            specialties
+          )
+        `)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Error fetching user bookings:", error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error("Error in getUserBookings:", error)
+      return []
+    }
+  }
+
+  async createBooking(bookingData: any) {
+    try {
+      const { data, error } = await this.supabase.from("bookings").insert(bookingData).select().single()
+
+      if (error) {
+        console.error("Error creating booking:", error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error("Error in createBooking:", error)
+      return null
+    }
   }
 }
 
-export const enhancedSupabase = new EnhancedSupabaseClient()
+export const enhancedSupabaseHelpers = new EnhancedSupabaseHelpers()
 
-// Export types
-export type { Database } from "./types"
+// Named exports for compatibility
+export { createClient }
+export { createClient as createBrowserClient }
+
+// Default export
+export default enhancedSupabaseHelpers

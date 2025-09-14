@@ -1,5 +1,7 @@
 import { updateSession } from "@/lib/supabase/middleware"
 
+export const runtime = "nodejs"
+
 export async function middleware(request: any) {
   // Allow access to public routes without authentication
   const publicRoutes = ["/", "/login", "/signup", "/auth", "/about", "/contact", "/help", "/terms", "/privacy", "/faq"]

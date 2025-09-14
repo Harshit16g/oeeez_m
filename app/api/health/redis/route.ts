@@ -1,7 +1,7 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { healthCheck } from "@/lib/redis/client"
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const health = await healthCheck()
 
@@ -10,14 +10,9 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error("Health check error:", error)
-
     return NextResponse.json(
       {
-        redis: {
-          status: "error",
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
+        redis: { status: "error", error: "Health check failed" },
         timestamp: new Date().toISOString(),
       },
       { status: 500 },

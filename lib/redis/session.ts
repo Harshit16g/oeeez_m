@@ -20,7 +20,7 @@ export const sessionManager = {
     }
 
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) return null
 
       const sessionId = `${REDIS_CONFIG.keyPrefixes.session}${userId}:${Date.now()}`
@@ -49,7 +49,7 @@ export const sessionManager = {
     if (!REDIS_CONFIG.features.enableSessions) return null
 
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) return null
 
       const data = await redis.get(sessionId)
@@ -70,7 +70,7 @@ export const sessionManager = {
     if (!REDIS_CONFIG.features.enableSessions) return false
 
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) return false
 
       const existingData = await redis.get(sessionId)
@@ -95,7 +95,7 @@ export const sessionManager = {
     if (!REDIS_CONFIG.features.enableSessions) return false
 
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) return false
 
       const sessionData = await redis.get(sessionId)
@@ -117,7 +117,7 @@ export const sessionManager = {
     if (!REDIS_CONFIG.features.enableSessions) return []
 
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) return []
 
       const userSessionsKey = `${REDIS_CONFIG.keyPrefixes.user}${userId}:sessions`
@@ -142,7 +142,7 @@ export const sessionManager = {
     if (!REDIS_CONFIG.features.enableSessions) return false
 
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) return false
 
       const userSessionsKey = `${REDIS_CONFIG.keyPrefixes.user}${userId}:sessions`
@@ -164,7 +164,7 @@ export const sessionManager = {
     if (!REDIS_CONFIG.features.enableSessions) return 0
 
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) return 0
 
       let cleaned = 0
@@ -196,7 +196,7 @@ export const sessionManager = {
     }
 
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) return { totalSessions: 0, activeSessions: 0, expiredSessions: 0 }
 
       const pattern = `${REDIS_CONFIG.keyPrefixes.session}*`

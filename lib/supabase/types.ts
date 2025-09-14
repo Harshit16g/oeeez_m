@@ -68,18 +68,17 @@ export interface Database {
           updated_at?: string
         }
       }
-      booking_requests: {
+      bookings: {
         Row: {
           id: string
           client_id: string
           artist_id: string
-          project_title: string
-          project_description: string
-          budget_min: number | null
-          budget_max: number | null
-          timeline: string | null
-          status: "pending" | "accepted" | "rejected" | "completed" | "cancelled"
-          message: string | null
+          event_type: string
+          event_date: string
+          event_location: string
+          budget: number | null
+          description: string | null
+          status: "pending" | "confirmed" | "cancelled" | "completed"
           created_at: string
           updated_at: string
         }
@@ -87,13 +86,12 @@ export interface Database {
           id?: string
           client_id: string
           artist_id: string
-          project_title: string
-          project_description: string
-          budget_min?: number | null
-          budget_max?: number | null
-          timeline?: string | null
-          status?: "pending" | "accepted" | "rejected" | "completed" | "cancelled"
-          message?: string | null
+          event_type: string
+          event_date: string
+          event_location: string
+          budget?: number | null
+          description?: string | null
+          status?: "pending" | "confirmed" | "cancelled" | "completed"
           created_at?: string
           updated_at?: string
         }
@@ -101,15 +99,43 @@ export interface Database {
           id?: string
           client_id?: string
           artist_id?: string
-          project_title?: string
-          project_description?: string
-          budget_min?: number | null
-          budget_max?: number | null
-          timeline?: string | null
-          status?: "pending" | "accepted" | "rejected" | "completed" | "cancelled"
-          message?: string | null
+          event_type?: string
+          event_date?: string
+          event_location?: string
+          budget?: number | null
+          description?: string | null
+          status?: "pending" | "confirmed" | "cancelled" | "completed"
           created_at?: string
           updated_at?: string
+        }
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          message: string
+          type: "info" | "success" | "warning" | "error"
+          read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          message: string
+          type?: "info" | "success" | "warning" | "error"
+          read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          message?: string
+          type?: "info" | "success" | "warning" | "error"
+          read?: boolean
+          created_at?: string
         }
       }
     }

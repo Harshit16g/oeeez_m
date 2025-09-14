@@ -1,4 +1,4 @@
-// Redis client with safe disabled mode
+// Redis client with completely safe disabled mode - no static imports
 let redis: any = null
 let isInitialized = false
 
@@ -16,10 +16,10 @@ export async function initializeRedis(): Promise<any> {
   }
 
   try {
-    // Only import ioredis if Redis is enabled
-    const Redis = require("ioredis")
+    // Dynamic import only when Redis is enabled - prevents build-time bundling
+    const { default: Redis } = await import("ioredis")
 
-    redis = new Redis(process.env.REDIS_URL, {
+    redis = new Redis(process.env.REDIS_URL!, {
       lazyConnect: true,
       maxRetriesPerRequest: Number(process.env.REDIS_MAX_RETRIES ?? 3),
       connectTimeout: Number(process.env.REDIS_CONNECT_TIMEOUT ?? 10000),
@@ -44,9 +44,9 @@ export async function initializeRedis(): Promise<any> {
   }
 }
 
-export function getRedis(): any {
+export async function getRedis(): Promise<any> {
   if (!isInitialized) {
-    initializeRedis()
+    return await initializeRedis()
   }
   return redis
 }
@@ -56,7 +56,7 @@ export async function safeGet(key: string): Promise<any> {
   if (!isRedisEnabled()) return null
 
   try {
-    const client = getRedis()
+    const client = await getRedis()
     if (!client) return null
 
     const value = await client.get(key)
@@ -71,7 +71,7 @@ export async function safeSet(key: string, value: any, ttl?: number): Promise<bo
   if (!isRedisEnabled()) return false
 
   try {
-    const client = getRedis()
+    const client = await getRedis()
     if (!client) return false
 
     const serializedValue = JSON.stringify(value)
@@ -92,7 +92,7 @@ export async function safeDel(key: string | string[]): Promise<boolean> {
   if (!isRedisEnabled()) return false
 
   try {
-    const client = getRedis()
+    const client = await getRedis()
     if (!client) return false
 
     if (Array.isArray(key)) {
@@ -111,7 +111,7 @@ export async function safeExists(key: string): Promise<boolean> {
   if (!isRedisEnabled()) return false
 
   try {
-    const client = getRedis()
+    const client = await getRedis()
     if (!client) return false
 
     const result = await client.exists(key)
@@ -126,7 +126,7 @@ export async function safeExpire(key: string, ttl: number): Promise<boolean> {
   if (!isRedisEnabled()) return false
 
   try {
-    const client = getRedis()
+    const client = await getRedis()
     if (!client) return false
 
     await client.expire(key, ttl)
@@ -141,7 +141,7 @@ export async function safeKeys(pattern: string): Promise<string[]> {
   if (!isRedisEnabled()) return []
 
   try {
-    const client = getRedis()
+    const client = await getRedis()
     if (!client) return []
 
     return await client.keys(pattern)
@@ -161,7 +161,7 @@ export async function healthCheck(): Promise<{
   }
 
   try {
-    const client = getRedis()
+    const client = await getRedis()
     if (!client) {
       return { status: "unhealthy", error: "Redis client not initialized" }
     }

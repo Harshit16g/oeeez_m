@@ -30,7 +30,7 @@ class RateLimiter {
     }
 
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) {
         return {
           allowed: true,
@@ -118,7 +118,7 @@ class RateLimiter {
 
   public async resetLimit(identifier: string, prefix = "default"): Promise<void> {
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) return
 
       const key = this.getKey(identifier, prefix)
@@ -134,7 +134,7 @@ class RateLimiter {
     prefix = "default",
   ): Promise<{ current: number; limit: number; resetTime: number }> {
     try {
-      const redis = getRedis()
+      const redis = await getRedis()
       if (!redis) {
         return { current: 0, limit: config.maxRequests, resetTime: Date.now() + config.windowMs }
       }

@@ -22,8 +22,15 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+      <div className="min-h-screen bg-oeeez-navy-dark flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-isometric-cubes opacity-20"></div>
+        <div className="absolute inset-0 bg-gradient-oeeez opacity-30 animate-gradient-shift"></div>
+        <div className="relative">
+          <div className="animate-spin rounded-full h-32 w-32 border-4 border-oeeez-coral border-t-oeeez-teal-600"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-2xl font-bold text-white">O</span>
+          </div>
+        </div>
       </div>
     )
   }
@@ -35,38 +42,45 @@ export default function HomePage() {
 
   // Show landing page for non-authenticated users or authenticated users who haven't been redirected
   return (
-    <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-blue-900 min-h-screen overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 dark:bg-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-300 dark:bg-blue-600 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-40 left-40 w-80 h-80 bg-pink-300 dark:bg-pink-600 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
-      </div>
+    <div className="relative bg-oeeez-navy-dark min-h-screen overflow-hidden">
+      {/* Isometric Cubes Background */}
+      <div className="absolute inset-0 bg-isometric-cubes opacity-30"></div>
+      
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-oeeez opacity-40 animate-gradient-shift"></div>
+      
+      {/* Noise Texture Overlay */}
+      <div 
+        className="absolute inset-0 opacity-10"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+        }}
+      ></div>
 
       {/* Hero Section */}
       <section className="relative container mx-auto px-4 py-20 text-center">
         <div className="max-w-4xl mx-auto">
           {/* Floating Badge */}
           <AnimatedCard delay={0} animationType="fade-up">
-            <div className="inline-flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-purple-200 dark:border-purple-700 rounded-full px-6 py-2 mb-8">
-              <Sparkles className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                Multipurpose Marketplace for Everything
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-oeeez-coral/30 rounded-full px-6 py-2 mb-8">
+              <Sparkles className="h-4 w-4 text-oeeez-coral-light" />
+              <span className="text-sm font-medium text-white">
+                The Multipurpose Marketplace Platform
               </span>
             </div>
           </AnimatedCard>
 
           <AnimatedCard delay={200} animationType="fade-up">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white mb-8">
-              Your Complete Marketplace for
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 block animate-gradient-x">
-                Services & Products
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8">
+              Welcome to
+              <span className="text-gradient-oeeez block mt-2">
+                Oeeez
               </span>
             </h1>
           </AnimatedCard>
 
           <AnimatedCard delay={400} animationType="fade-up">
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-gray-200 mb-12 max-w-3xl mx-auto leading-relaxed">
               From performing arts to home services, digital solutions to wellness - discover and book trusted
               providers across 15+ categories. Join thousands creating amazing experiences.
             </p>
@@ -80,7 +94,7 @@ export default function HomePage() {
                   <Button
                     asChild
                     size="lg"
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group"
+                    className="bg-gradient-oeeez hover:opacity-90 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 group animate-gradient-shift"
                   >
                     <Link href="/categories" className="flex items-center gap-2">
                       Browse Categories
@@ -91,7 +105,7 @@ export default function HomePage() {
                     asChild
                     size="lg"
                     variant="outline"
-                    className="px-8 py-4 text-lg rounded-full border-2 border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-lg"
+                    className="px-8 py-4 text-lg rounded-full border-2 border-oeeez-teal-600 text-oeeez-teal-600 hover:bg-oeeez-teal-600/10 backdrop-blur-md bg-white/10 shadow-lg"
                   >
                     <Link href="/artists">View Artists</Link>
                   </Button>
@@ -102,7 +116,7 @@ export default function HomePage() {
                   <Button
                     asChild
                     size="lg"
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group"
+                    className="bg-gradient-oeeez hover:opacity-90 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 group animate-gradient-shift"
                   >
                     <Link href="/login" className="flex items-center gap-2">
                       Get Started
@@ -113,7 +127,7 @@ export default function HomePage() {
                     asChild
                     variant="outline"
                     size="lg"
-                    className="border-2 border-purple-300 hover:border-purple-400 px-8 py-4 text-lg rounded-full backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 hover:bg-white/70 dark:hover:bg-gray-800/70 transform hover:scale-105 transition-all duration-300"
+                    className="border-2 border-oeeez-coral text-white hover:bg-oeeez-coral/20 px-8 py-4 text-lg rounded-full backdrop-blur-md bg-white/10 transform hover:scale-105 transition-all duration-300"
                   >
                     <Link href="/signup">Sign Up</Link>
                   </Button>

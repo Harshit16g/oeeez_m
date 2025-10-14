@@ -53,6 +53,41 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Oeeez Brand Colors
+        oeeez: {
+          red: {
+            50: "#fef2f2",
+            100: "#fee2e2",
+            200: "#fecaca",
+            300: "#fca5a5",
+            400: "#f87171",
+            500: "#ef4444",
+            600: "#dc2626",
+            700: "#c0392b", // Primary brand red
+            800: "#991b1b",
+            900: "#7f1d1d",
+          },
+          teal: {
+            50: "#f0fdfa",
+            100: "#ccfbf1",
+            200: "#99f6e4",
+            300: "#5eead4",
+            400: "#2dd4bf",
+            500: "#14b8a6",
+            600: "#16a085", // Primary brand teal
+            700: "#0f766e",
+            800: "#115e59",
+            900: "#134e4a",
+          },
+          coral: {
+            DEFAULT: "#e17055",
+            light: "#fab1a0",
+          },
+          navy: {
+            DEFAULT: "#2c3e50",
+            dark: "#1a252f",
+          },
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -68,10 +103,28 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "gradient-shift": {
+          "0%, 100%": {
+            "background-position": "0% 50%",
+          },
+          "50%": {
+            "background-position": "100% 50%",
+          },
+        },
+        "float": {
+          "0%, 100%": {
+            transform: "translateY(0px)",
+          },
+          "50%": {
+            transform: "translateY(-20px)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "gradient-shift": "gradient-shift 15s ease infinite",
+        "float": "float 6s ease-in-out infinite",
       },
       perspective: {
         "1000": "1000px",
@@ -97,6 +150,29 @@ const config = {
         },
         ".backface-hidden": {
           "backface-visibility": "hidden",
+        },
+        ".bg-isometric-cubes": {
+          backgroundImage: `
+            linear-gradient(30deg, #c0392b 12%, transparent 12.5%, transparent 87%, #c0392b 87.5%, #c0392b),
+            linear-gradient(150deg, #c0392b 12%, transparent 12.5%, transparent 87%, #c0392b 87.5%, #c0392b),
+            linear-gradient(30deg, #c0392b 12%, transparent 12.5%, transparent 87%, #c0392b 87.5%, #c0392b),
+            linear-gradient(150deg, #c0392b 12%, transparent 12.5%, transparent 87%, #c0392b 87.5%, #c0392b),
+            linear-gradient(60deg, #e17055 25%, transparent 25.5%, transparent 75%, #e17055 75%, #e17055),
+            linear-gradient(60deg, #e17055 25%, transparent 25.5%, transparent 75%, #e17055 75%, #e17055)
+          `,
+          backgroundColor: "#16a085",
+          backgroundSize: "80px 140px",
+          backgroundPosition: "0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px",
+        },
+        ".bg-gradient-oeeez": {
+          backgroundImage: "linear-gradient(135deg, #c0392b 0%, #e17055 50%, #16a085 100%)",
+          backgroundSize: "200% 200%",
+        },
+        ".text-gradient-oeeez": {
+          backgroundImage: "linear-gradient(135deg, #c0392b 0%, #e17055 50%, #16a085 100%)",
+          "-webkit-background-clip": "text",
+          "-webkit-text-fill-color": "transparent",
+          "background-clip": "text",
         },
       }
       addUtilities(newUtilities)

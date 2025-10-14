@@ -48,8 +48,13 @@ export function Navbar() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <Music className="h-6 w-6 text-purple-600" />
-          <span className="font-bold text-xl text-purple-600">Artistly</span>
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-oeeez opacity-20 blur-lg"></div>
+            <div className="relative w-8 h-8 flex items-center justify-center">
+              <div className="w-6 h-6 bg-gradient-oeeez rounded transform rotate-45"></div>
+            </div>
+          </div>
+          <span className="font-bold text-2xl text-gradient-oeeez">Oeeez</span>
         </div>
 
         {/* Navigation (links for authenticated users) */}

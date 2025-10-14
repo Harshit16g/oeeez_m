@@ -56,6 +56,14 @@ export function Navbar() {
         {user && (
           <div className="flex items-center space-x-6">
             <a
+              href="/categories"
+              className={`font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-300 ${
+                pathname === "/categories" ? "text-purple-600 dark:text-purple-400" : ""
+              }`}
+            >
+              Categories
+            </a>
+            <a
               href="/artists"
               className={`font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-300 ${
                 pathname === "/artists" ? "text-purple-600 dark:text-purple-400" : ""

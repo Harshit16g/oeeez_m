@@ -201,6 +201,13 @@ export default function DashboardPage() {
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/categories")}>
+              <CardHeader className="text-center">
+                <CardTitle className="text-lg">Browse Categories</CardTitle>
+                <CardDescription>Explore all marketplace categories</CardDescription>
+              </CardHeader>
+            </Card>
+
             <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/artists")}>
               <CardHeader className="text-center">
                 <CardTitle className="text-lg">Browse Artists</CardTitle>
@@ -214,17 +221,17 @@ export default function DashboardPage() {
                 <CardDescription>Manage your appointments</CardDescription>
               </CardHeader>
             </Card>
+          </div>
 
+          {/* Additional Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={handleEditProfile}>
               <CardHeader className="text-center">
                 <CardTitle className="text-lg">Edit Profile</CardTitle>
                 <CardDescription>Update your information</CardDescription>
               </CardHeader>
             </Card>
-          </div>
 
-          {/* Additional Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/profile")}>
               <CardHeader className="text-center">
                 <CardTitle className="text-lg">View Public Profile</CardTitle>

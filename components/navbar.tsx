@@ -52,16 +52,32 @@ export function Navbar() {
           <span className="font-bold text-xl text-purple-600">Artistly</span>
         </div>
 
-        {/* Navigation (only Artists link for authenticated users) */}
+        {/* Navigation (links for authenticated users) */}
         {user && (
           <div className="flex items-center space-x-6">
             <a
               href="/artists"
-              className={`font-medium text-sm text-gray-600 hover:text-purple-600 transition-colors duration-300 ${
-                pathname === "/artists" ? "text-purple-600" : ""
+              className={`font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-300 ${
+                pathname === "/artists" ? "text-purple-600 dark:text-purple-400" : ""
               }`}
             >
               Artists
+            </a>
+            <a
+              href="/bookings"
+              className={`font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-300 ${
+                pathname === "/bookings" ? "text-purple-600 dark:text-purple-400" : ""
+              }`}
+            >
+              Bookings
+            </a>
+            <a
+              href="/help"
+              className={`font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-300 ${
+                pathname === "/help" ? "text-purple-600 dark:text-purple-400" : ""
+              }`}
+            >
+              Help
             </a>
           </div>
         )}

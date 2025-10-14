@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/enhanced-auth-context"
 export default function HomePage() {
   const { user, profile, loading } = useAuth()
   const router = useRouter()
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     // Only redirect authenticated users who have completed onboarding
@@ -20,13 +21,20 @@ export default function HomePage() {
     }
   }, [user, profile, loading, router])
 
+  // Track scroll for button animation
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50)
+    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-oeeez-navy-dark flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-isometric-cubes opacity-20"></div>
-        <div className="absolute inset-0 bg-gradient-oeeez opacity-30 animate-gradient-shift"></div>
-        <div className="relative">
-          <div className="animate-spin rounded-full h-32 w-32 border-4 border-oeeez-coral border-t-oeeez-teal-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-oeeez-red-700 via-oeeez-coral to-oeeez-teal-600 flex items-center justify-center relative overflow-hidden">
+        <div className="relative backdrop-blur-sm bg-white/10 p-8 rounded-3xl">
+          <div className="animate-spin rounded-full h-32 w-32 border-4 border-white/30 border-t-white"></div>
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-2xl font-bold text-white">O</span>
           </div>
@@ -42,28 +50,21 @@ export default function HomePage() {
 
   // Show landing page for non-authenticated users or authenticated users who haven't been redirected
   return (
-    <div className="relative bg-oeeez-navy-dark min-h-screen overflow-hidden">
-      {/* Isometric Cubes Background */}
-      <div className="absolute inset-0 bg-isometric-cubes opacity-30"></div>
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Clean Gradient Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-oeeez-red-700 via-oeeez-coral to-oeeez-teal-600"></div>
       
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-oeeez opacity-40 animate-gradient-shift"></div>
-      
-      {/* Noise Texture Overlay */}
-      <div 
-        className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      ></div>
+      {/* Subtle Radial Overlay for depth */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent_50%)]"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,0,0,0.2),transparent_50%)]"></div>
 
       {/* Hero Section */}
       <section className="relative container mx-auto px-4 py-20 text-center">
         <div className="max-w-4xl mx-auto">
           {/* Floating Badge */}
           <AnimatedCard delay={0} animationType="fade-up">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-oeeez-coral/30 rounded-full px-6 py-2 mb-8">
-              <Sparkles className="h-4 w-4 text-oeeez-coral-light" />
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-lg border border-white/30 rounded-full px-6 py-2 mb-8 shadow-lg">
+              <Sparkles className="h-4 w-4 text-white" />
               <span className="text-sm font-medium text-white">
                 The Multipurpose Marketplace Platform
               </span>
@@ -94,18 +95,29 @@ export default function HomePage() {
                   <Button
                     asChild
                     size="lg"
-                    className="bg-gradient-oeeez hover:opacity-90 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 group animate-gradient-shift"
+                    className={`
+                      bg-gradient-to-r from-orange-600 via-red-600 to-orange-700
+                      hover:from-orange-500 hover:via-red-500 hover:to-orange-600
+                      text-white px-8 py-4 text-lg rounded-full
+                      backdrop-blur-xl bg-opacity-90
+                      shadow-[0_8px_32px_0_rgba(255,100,50,0.4)]
+                      hover:shadow-[0_12px_48px_0_rgba(255,100,50,0.6)]
+                      border border-white/20
+                      transform transition-all duration-500 ease-out
+                      group
+                      ${scrolled ? 'scale-110 shadow-[0_16px_64px_0_rgba(255,100,50,0.7)] animate-pulse' : 'scale-100'}
+                    `}
                   >
                     <Link href="/categories" className="flex items-center gap-2">
-                      Browse Categories
-                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      <span className="relative z-10">Browse Categories</span>
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform relative z-10" />
                     </Link>
                   </Button>
                   <Button
                     asChild
                     size="lg"
                     variant="outline"
-                    className="px-8 py-4 text-lg rounded-full border-2 border-oeeez-teal-600 text-oeeez-teal-600 hover:bg-oeeez-teal-600/10 backdrop-blur-md bg-white/10 shadow-lg"
+                    className="px-8 py-4 text-lg rounded-full border-2 border-white/40 text-white hover:bg-white/20 backdrop-blur-lg bg-white/10 shadow-lg transform hover:scale-105 transition-all duration-300"
                   >
                     <Link href="/artists">View Artists</Link>
                   </Button>
@@ -116,18 +128,29 @@ export default function HomePage() {
                   <Button
                     asChild
                     size="lg"
-                    className="bg-gradient-oeeez hover:opacity-90 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 group animate-gradient-shift"
+                    className={`
+                      bg-gradient-to-r from-orange-600 via-red-600 to-orange-700
+                      hover:from-orange-500 hover:via-red-500 hover:to-orange-600
+                      text-white px-8 py-4 text-lg rounded-full
+                      backdrop-blur-xl bg-opacity-90
+                      shadow-[0_8px_32px_0_rgba(255,100,50,0.4)]
+                      hover:shadow-[0_12px_48px_0_rgba(255,100,50,0.6)]
+                      border border-white/20
+                      transform transition-all duration-500 ease-out
+                      group
+                      ${scrolled ? 'scale-110 shadow-[0_16px_64px_0_rgba(255,100,50,0.7)] animate-pulse' : 'scale-100'}
+                    `}
                   >
                     <Link href="/login" className="flex items-center gap-2">
-                      Get Started
-                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      <span className="relative z-10">Get Started</span>
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform relative z-10" />
                     </Link>
                   </Button>
                   <Button
                     asChild
                     variant="outline"
                     size="lg"
-                    className="border-2 border-oeeez-coral text-white hover:bg-oeeez-coral/20 px-8 py-4 text-lg rounded-full backdrop-blur-md bg-white/10 transform hover:scale-105 transition-all duration-300"
+                    className="border-2 border-white/40 text-white hover:bg-white/20 px-8 py-4 text-lg rounded-full backdrop-blur-lg bg-white/10 transform hover:scale-105 transition-all duration-300 shadow-lg"
                   >
                     <Link href="/signup">Sign Up</Link>
                   </Button>
@@ -153,29 +176,29 @@ export default function HomePage() {
               icon: Music,
               title: "15+ Categories",
               description: "From performing arts to home services, digital solutions to wellness",
-              gradient: "from-oeeez-red-700 to-oeeez-coral",
+              gradient: "from-orange-500 to-red-600",
             },
             {
               icon: Users,
               title: "2,600+ Providers",
               description: "All providers are verified, rated, and professionally managed",
-              gradient: "from-oeeez-teal-600 to-oeeez-teal-700",
+              gradient: "from-red-600 to-orange-700",
             },
             {
               icon: Calendar,
               title: "Easy Booking",
               description: "Simple booking and secure communication with instant availability",
-              gradient: "from-oeeez-coral to-oeeez-red-600",
+              gradient: "from-orange-600 to-red-700",
             },
             {
               icon: Star,
               title: "Quality Assured",
               description: "Trending system and reviews to help you find the best providers",
-              gradient: "from-oeeez-teal-700 to-oeeez-navy",
+              gradient: "from-red-700 to-orange-800",
             },
           ].map((feature, index) => (
             <AnimatedCard key={index} delay={200 + index * 100} animationType="fade-up">
-              <div className="group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-white/10 bg-white/5 backdrop-blur-md h-full rounded-2xl p-6">
+              <div className="group hover:shadow-[0_20px_60px_0_rgba(255,100,50,0.3)] transition-all duration-300 transform hover:-translate-y-1 border border-white/20 bg-white/10 backdrop-blur-xl h-full rounded-2xl p-6">
                 <div className="text-center h-full flex flex-col">
                   <div
                     className={`w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center transform group-hover:rotate-6 transition-transform duration-300 shadow-lg`}
@@ -183,7 +206,7 @@ export default function HomePage() {
                     <feature.icon className="h-8 w-8 text-white" />
                   </div>
                   <h3 className="font-bold text-xl mb-4 text-white">{feature.title}</h3>
-                  <p className="text-gray-200 leading-relaxed flex-1">{feature.description}</p>
+                  <p className="text-white/90 leading-relaxed flex-1">{feature.description}</p>
                 </div>
               </div>
             </AnimatedCard>
@@ -194,7 +217,7 @@ export default function HomePage() {
       {/* CTA Section - Only show for non-authenticated users */}
       {!user && (
         <section className="relative py-16 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-oeeez-red-700/20 via-oeeez-navy/40 to-oeeez-teal-600/20"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
           <div className="relative container mx-auto px-4 text-center">
             <div className="max-w-3xl mx-auto">
               <AnimatedCard delay={0} animationType="fade-up">
@@ -202,7 +225,7 @@ export default function HomePage() {
               </AnimatedCard>
 
               <AnimatedCard delay={200} animationType="fade-up">
-                <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
+                <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
                   Join Oeeez today and start connecting with amazing service providers across all categories
                 </p>
               </AnimatedCard>
@@ -212,7 +235,7 @@ export default function HomePage() {
                   <Button
                     asChild
                     size="lg"
-                    className="bg-gradient-oeeez hover:opacity-90 text-white px-10 py-4 text-lg rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-gradient-shift"
+                    className="bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 hover:from-orange-500 hover:via-red-500 hover:to-orange-600 text-white px-10 py-4 text-lg rounded-full shadow-[0_8px_32px_0_rgba(255,100,50,0.4)] hover:shadow-[0_12px_48px_0_rgba(255,100,50,0.6)] backdrop-blur-xl border border-white/20 transform hover:scale-105 transition-all duration-300"
                   >
                     <Link href="/signup" className="flex items-center gap-2">
                       Join Oeeez
@@ -223,7 +246,7 @@ export default function HomePage() {
                     asChild
                     variant="outline"
                     size="lg"
-                    className="border-2 border-oeeez-coral text-white hover:bg-oeeez-coral/20 px-10 py-4 text-lg rounded-full backdrop-blur-md bg-white/10"
+                    className="border-2 border-white/40 text-white hover:bg-white/20 px-10 py-4 text-lg rounded-full backdrop-blur-lg bg-white/10 transform hover:scale-105 transition-all duration-300"
                   >
                     <Link href="/login">Sign In</Link>
                   </Button>

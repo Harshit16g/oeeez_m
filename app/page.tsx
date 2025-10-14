@@ -51,24 +51,24 @@ export default function HomePage() {
             <div className="inline-flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-purple-200 dark:border-purple-700 rounded-full px-6 py-2 mb-8">
               <Sparkles className="h-4 w-4 text-purple-600" />
               <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                India&apos;s Premier Artist Booking Platform
+                Multipurpose Marketplace for Everything
               </span>
             </div>
           </AnimatedCard>
 
           <AnimatedCard delay={200} animationType="fade-up">
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white mb-8">
-              Connect with Amazing
+              Your Complete Marketplace for
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 block animate-gradient-x">
-                Performing Artists
+                Services & Products
               </span>
             </h1>
           </AnimatedCard>
 
           <AnimatedCard delay={400} animationType="fade-up">
             <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Discover talented performers and book them for your events. Join thousands of event planners creating
-              unforgettable experiences.
+              From performing arts to home services, digital solutions to wellness - discover and book trusted
+              providers across 15+ categories. Join thousands creating amazing experiences.
             </p>
           </AnimatedCard>
 
@@ -76,16 +76,26 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               {user ? (
                 // Show different CTA for authenticated users
-                <Button
-                  asChild
-                  size="lg"
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group"
-                >
-                  <Link href="/artists" className="flex items-center gap-2">
-                    Browse Artists
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </Button>
+                <>
+                  <Button
+                    asChild
+                    size="lg"
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group"
+                  >
+                    <Link href="/categories" className="flex items-center gap-2">
+                      Browse Categories
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="px-8 py-4 text-lg rounded-full border-2 border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-lg"
+                  >
+                    <Link href="/artists">View Artists</Link>
+                  </Button>
+                </>
               ) : (
                 // Show login/signup for non-authenticated users
                 <>

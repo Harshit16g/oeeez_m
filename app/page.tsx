@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Sparkles, Music, Users, Calendar, Star } from "lucide-react"
+import { ArrowRight, Sparkles, Shield, Zap, TrendingUp, Search, Users, Star } from "lucide-react"
 import { AnimatedCard } from "@/components/animated-card"
 import { OnboardingFlow } from "@/components/onboarding-flow"
 import { useAuth } from "@/lib/enhanced-auth-context"
@@ -32,11 +32,11 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-oeeez-red-700 via-oeeez-coral to-oeeez-teal-600 flex items-center justify-center relative overflow-hidden">
-        <div className="relative backdrop-blur-sm bg-white/10 p-8 rounded-3xl">
-          <div className="animate-spin rounded-full h-32 w-32 border-4 border-white/30 border-t-white"></div>
+      <div className="min-h-screen bg-oeeez-black flex items-center justify-center">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-32 w-32 border-4 border-oeeez-steel-700 border-t-oeeez-crimson"></div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-2xl font-bold text-white">O</span>
+            <span className="text-3xl font-bold text-gradient-crimson">O</span>
           </div>
         </div>
       </div>
@@ -50,109 +50,98 @@ export default function HomePage() {
 
   // Show landing page for non-authenticated users or authenticated users who haven't been redirected
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Clean Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-oeeez-red-700 via-oeeez-coral to-oeeez-teal-600"></div>
+    <div className="relative min-h-screen bg-oeeez-black overflow-hidden">
+      {/* Mechanical Grid Background */}
+      <div className="absolute inset-0 bg-mechanical-grid"></div>
       
-      {/* Subtle Radial Overlay for depth */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent_50%)]"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,0,0,0.2),transparent_50%)]"></div>
+      {/* Glossy Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-oeeez-black via-transparent to-oeeez-black"></div>
 
       {/* Hero Section */}
-      <section className="relative container mx-auto px-4 py-20 text-center">
-        <div className="max-w-4xl mx-auto">
-          {/* Floating Badge */}
+      <section className="relative container mx-auto px-4 pt-32 pb-20">
+        <div className="max-w-6xl mx-auto">
+          {/* Premium Badge */}
           <AnimatedCard delay={0} animationType="fade-up">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-lg border border-white/30 rounded-full px-6 py-2 mb-8 shadow-lg">
-              <Sparkles className="h-4 w-4 text-white" />
-              <span className="text-sm font-medium text-white">
-                The Multipurpose Marketplace Platform
+            <div className="inline-flex items-center gap-2 bg-glossy-card rounded-full px-6 py-3 mb-8 glossy-shadow">
+              <Sparkles className="h-4 w-4 text-oeeez-crimson" />
+              <span className="text-sm font-semibold text-oeeez-steel-400 tracking-wide">
+                PREMIUM MARKETPLACE PLATFORM
               </span>
             </div>
           </AnimatedCard>
 
+          {/* Hero Heading */}
           <AnimatedCard delay={200} animationType="fade-up">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8">
-              Welcome to
-              <span className="text-gradient-oeeez block mt-2">
-                Oeeez
+            <h1 className="text-6xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-tight">
+              Discover
+              <span className="block text-gradient-crimson mt-2">
+                Excellence
               </span>
             </h1>
           </AnimatedCard>
 
           <AnimatedCard delay={400} animationType="fade-up">
-            <p className="text-xl md:text-2xl text-gray-200 mb-12 max-w-3xl mx-auto leading-relaxed">
-              From performing arts to home services, digital solutions to wellness - discover and book trusted
-              providers across 15+ categories. Join thousands creating amazing experiences.
+            <p className="text-xl md:text-2xl text-oeeez-steel-400 mb-12 max-w-3xl leading-relaxed">
+              Connect with verified professionals across 15+ categories. From creative services to technical solutions - 
+              <span className="text-white font-semibold"> powered by trust, driven by quality.</span>
             </p>
           </AnimatedCard>
 
+          {/* CTA Buttons */}
           <AnimatedCard delay={600} animationType="scale">
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6">
               {user ? (
-                // Show different CTA for authenticated users
                 <>
                   <Button
                     asChild
                     size="lg"
                     className={`
-                      bg-gradient-to-r from-orange-600 via-red-600 to-orange-700
-                      hover:from-orange-500 hover:via-red-500 hover:to-orange-600
-                      text-white px-8 py-4 text-lg rounded-full
-                      backdrop-blur-xl bg-opacity-90
-                      shadow-[0_8px_32px_0_rgba(255,100,50,0.4)]
-                      hover:shadow-[0_12px_48px_0_rgba(255,100,50,0.6)]
-                      border border-white/20
+                      bg-gradient-crimson text-white px-10 py-6 text-lg rounded-xl
+                      glossy-shadow hover:glossy-shadow-lg
                       transform transition-all duration-500 ease-out
-                      group
-                      ${scrolled ? 'scale-110 shadow-[0_16px_64px_0_rgba(255,100,50,0.7)] animate-pulse' : 'scale-100'}
+                      group relative overflow-hidden
+                      ${scrolled ? 'scale-105 animate-pulse-glow' : 'scale-100'}
                     `}
                   >
-                    <Link href="/categories" className="flex items-center gap-2">
-                      <span className="relative z-10">Browse Categories</span>
-                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform relative z-10" />
+                    <Link href="/categories" className="flex items-center gap-3 relative z-10">
+                      <span className="font-bold">Explore Categories</span>
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
                     </Link>
                   </Button>
                   <Button
                     asChild
                     size="lg"
                     variant="outline"
-                    className="px-8 py-4 text-lg rounded-full border-2 border-white/40 text-white hover:bg-white/20 backdrop-blur-lg bg-white/10 shadow-lg transform hover:scale-105 transition-all duration-300"
+                    className="px-10 py-6 text-lg rounded-xl border-2 border-oeeez-steel-700 text-white hover:bg-oeeez-black-light bg-oeeez-black-light/50 backdrop-blur-xl transform hover:scale-105 transition-all duration-300"
                   >
-                    <Link href="/artists">View Artists</Link>
+                    <Link href="/artists">View Providers</Link>
                   </Button>
                 </>
               ) : (
-                // Show login/signup for non-authenticated users
                 <>
                   <Button
                     asChild
                     size="lg"
                     className={`
-                      bg-gradient-to-r from-orange-600 via-red-600 to-orange-700
-                      hover:from-orange-500 hover:via-red-500 hover:to-orange-600
-                      text-white px-8 py-4 text-lg rounded-full
-                      backdrop-blur-xl bg-opacity-90
-                      shadow-[0_8px_32px_0_rgba(255,100,50,0.4)]
-                      hover:shadow-[0_12px_48px_0_rgba(255,100,50,0.6)]
-                      border border-white/20
+                      bg-gradient-crimson text-white px-10 py-6 text-lg rounded-xl
+                      glossy-shadow hover:glossy-shadow-lg
                       transform transition-all duration-500 ease-out
-                      group
-                      ${scrolled ? 'scale-110 shadow-[0_16px_64px_0_rgba(255,100,50,0.7)] animate-pulse' : 'scale-100'}
+                      group relative overflow-hidden
+                      ${scrolled ? 'scale-105 animate-pulse-glow' : 'scale-100'}
                     `}
                   >
-                    <Link href="/login" className="flex items-center gap-2">
-                      <span className="relative z-10">Get Started</span>
-                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform relative z-10" />
+                    <Link href="/login" className="flex items-center gap-3 relative z-10">
+                      <span className="font-bold">Get Started</span>
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
                     </Link>
                   </Button>
                   <Button
                     asChild
                     variant="outline"
                     size="lg"
-                    className="border-2 border-white/40 text-white hover:bg-white/20 px-8 py-4 text-lg rounded-full backdrop-blur-lg bg-white/10 transform hover:scale-105 transition-all duration-300 shadow-lg"
+                    className="border-2 border-oeeez-steel-700 text-white hover:bg-oeeez-black-light px-10 py-6 text-lg rounded-xl bg-oeeez-black-light/50 backdrop-blur-xl transform hover:scale-105 transition-all duration-300"
                   >
-                    <Link href="/signup">Sign Up</Link>
+                    <Link href="/signup">Create Account</Link>
                   </Button>
                 </>
               )}
@@ -161,52 +150,100 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Trust Indicators / Stats Section */}
       <section className="relative container mx-auto px-4 py-16">
-        <AnimatedCard delay={0} animationType="fade-up" className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Why Choose Oeeez?</h2>
-          <p className="text-lg text-gray-200 max-w-2xl mx-auto">
-            Your one-stop marketplace for services, products, and professional talent across all categories
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-6xl mx-auto">
+          {[
+            { value: "2,600+", label: "Verified Providers", icon: Users },
+            { value: "15+", label: "Categories", icon: TrendingUp },
+            { value: "98%", label: "Satisfaction Rate", icon: Star },
+            { value: "24/7", label: "Support", icon: Shield },
+          ].map((stat, index) => (
+            <AnimatedCard key={index} delay={index * 100} animationType="fade-up">
+              <div className="bg-glossy-card rounded-2xl p-6 text-center glossy-shadow transform hover:scale-105 transition-all duration-300">
+                <stat.icon className="h-8 w-8 text-oeeez-crimson mx-auto mb-3" />
+                <div className="text-3xl font-black text-white mb-2">{stat.value}</div>
+                <div className="text-sm text-oeeez-steel-400 font-semibold tracking-wide">{stat.label.toUpperCase()}</div>
+              </div>
+            </AnimatedCard>
+          ))}
+        </div>
+      </section>
+
+      {/* Featured Categories Grid */}
+      <section className="relative container mx-auto px-4 py-20">
+        <AnimatedCard delay={0} animationType="fade-up" className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Explore Categories</h2>
+          <p className="text-xl text-oeeez-steel-400 max-w-2xl mx-auto">
+            From creative services to technical solutions - find the perfect provider for your needs
           </p>
         </AnimatedCard>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {[
+            { name: "Performing Arts", count: "320+ Providers", icon: "🎭" },
+            { name: "Visual Arts", count: "280+ Providers", icon: "🎨" },
+            { name: "Home Services", count: "450+ Providers", icon: "🏠" },
+            { name: "Digital Services", count: "380+ Providers", icon: "💻" },
+            { name: "Wellness", count: "240+ Providers", icon: "🧘" },
+            { name: "Professional", count: "330+ Providers", icon: "💼" },
+          ].map((category, index) => (
+            <AnimatedCard key={index} delay={200 + index * 100} animationType="fade-up">
+              <Link href="/categories">
+                <div className="bg-glossy-card rounded-2xl p-8 glossy-shadow hover:glossy-shadow-lg transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 group cursor-pointer">
+                  <div className="text-5xl mb-4">{category.icon}</div>
+                  <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-oeeez-crimson transition-colors">
+                    {category.name}
+                  </h3>
+                  <p className="text-oeeez-steel-400 font-semibold">{category.count}</p>
+                </div>
+              </Link>
+            </AnimatedCard>
+          ))}
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="relative container mx-auto px-4 py-20">
+        <AnimatedCard delay={0} animationType="fade-up" className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-black text-white mb-4">How It Works</h2>
+          <p className="text-xl text-oeeez-steel-400 max-w-2xl mx-auto">
+            Simple, secure, and efficient - get started in three easy steps
+          </p>
+        </AnimatedCard>
+
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {[
             {
-              icon: Music,
-              title: "15+ Categories",
-              description: "From performing arts to home services, digital solutions to wellness",
-              gradient: "from-orange-500 to-red-600",
+              step: "01",
+              title: "Search & Discover",
+              description: "Browse verified providers across 15+ categories with detailed profiles and reviews",
+              icon: Search,
             },
             {
-              icon: Users,
-              title: "2,600+ Providers",
-              description: "All providers are verified, rated, and professionally managed",
-              gradient: "from-red-600 to-orange-700",
+              step: "02",
+              title: "Connect & Book",
+              description: "Direct messaging, instant availability, and secure booking with transparent pricing",
+              icon: Zap,
             },
             {
-              icon: Calendar,
-              title: "Easy Booking",
-              description: "Simple booking and secure communication with instant availability",
-              gradient: "from-orange-600 to-red-700",
+              step: "03",
+              title: "Experience Quality",
+              description: "Rated services, quality assurance, and 24/7 support for peace of mind",
+              icon: Shield,
             },
-            {
-              icon: Star,
-              title: "Quality Assured",
-              description: "Trending system and reviews to help you find the best providers",
-              gradient: "from-red-700 to-orange-800",
-            },
-          ].map((feature, index) => (
+          ].map((step, index) => (
             <AnimatedCard key={index} delay={200 + index * 100} animationType="fade-up">
-              <div className="group hover:shadow-[0_20px_60px_0_rgba(255,100,50,0.3)] transition-all duration-300 transform hover:-translate-y-1 border border-white/20 bg-white/10 backdrop-blur-xl h-full rounded-2xl p-6">
-                <div className="text-center h-full flex flex-col">
-                  <div
-                    className={`w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center transform group-hover:rotate-6 transition-transform duration-300 shadow-lg`}
-                  >
-                    <feature.icon className="h-8 w-8 text-white" />
+              <div className="bg-glossy-card rounded-2xl p-8 glossy-shadow relative overflow-hidden group">
+                <div className="absolute top-0 right-0 text-9xl font-black text-oeeez-steel-900 opacity-20 leading-none p-4">
+                  {step.step}
+                </div>
+                <div className="relative z-10">
+                  <div className="w-16 h-16 rounded-xl bg-gradient-crimson flex items-center justify-center mb-6 glossy-shadow transform group-hover:scale-110 transition-transform">
+                    <step.icon className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="font-bold text-xl mb-4 text-white">{feature.title}</h3>
-                  <p className="text-white/90 leading-relaxed flex-1">{feature.description}</p>
+                  <h3 className="text-2xl font-bold text-white mb-4">{step.title}</h3>
+                  <p className="text-oeeez-steel-400 leading-relaxed">{step.description}</p>
                 </div>
               </div>
             </AnimatedCard>
@@ -214,39 +251,39 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section - Only show for non-authenticated users */}
+      {/* Final CTA Section - Only show for non-authenticated users */}
       {!user && (
-        <section className="relative py-16 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+        <section className="relative py-24">
+          <div className="absolute inset-0 bg-gradient-to-t from-oeeez-black to-transparent"></div>
           <div className="relative container mx-auto px-4 text-center">
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <AnimatedCard delay={0} animationType="fade-up">
-                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">Ready to Get Started?</h2>
+                <h2 className="text-4xl md:text-5xl font-black mb-6 text-white">Ready to Get Started?</h2>
               </AnimatedCard>
 
               <AnimatedCard delay={200} animationType="fade-up">
-                <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-                  Join Oeeez today and start connecting with amazing service providers across all categories
+                <p className="text-xl text-oeeez-steel-400 mb-12 max-w-2xl mx-auto">
+                  Join thousands of satisfied customers connecting with top-tier professionals on Oeeez
                 </p>
               </AnimatedCard>
 
               <AnimatedCard delay={400} animationType="scale">
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <div className="flex flex-col sm:flex-row gap-6 justify-center">
                   <Button
                     asChild
                     size="lg"
-                    className="bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 hover:from-orange-500 hover:via-red-500 hover:to-orange-600 text-white px-10 py-4 text-lg rounded-full shadow-[0_8px_32px_0_rgba(255,100,50,0.4)] hover:shadow-[0_12px_48px_0_rgba(255,100,50,0.6)] backdrop-blur-xl border border-white/20 transform hover:scale-105 transition-all duration-300"
+                    className="bg-gradient-crimson text-white px-12 py-6 text-xl rounded-xl glossy-shadow hover:glossy-shadow-lg transform hover:scale-105 transition-all duration-300"
                   >
-                    <Link href="/signup" className="flex items-center gap-2">
-                      Join Oeeez
-                      <ArrowRight className="h-5 w-5" />
+                    <Link href="/signup" className="flex items-center gap-3">
+                      <span className="font-bold">Join Oeeez</span>
+                      <ArrowRight className="h-6 w-6" />
                     </Link>
                   </Button>
                   <Button
                     asChild
                     variant="outline"
                     size="lg"
-                    className="border-2 border-white/40 text-white hover:bg-white/20 px-10 py-4 text-lg rounded-full backdrop-blur-lg bg-white/10 transform hover:scale-105 transition-all duration-300"
+                    className="border-2 border-oeeez-steel-700 text-white hover:bg-oeeez-black-light px-12 py-6 text-xl rounded-xl bg-oeeez-black-light/50 backdrop-blur-xl transform hover:scale-105 transition-all duration-300"
                   >
                     <Link href="/login">Sign In</Link>
                   </Button>

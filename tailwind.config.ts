@@ -53,39 +53,34 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Oeeez Brand Colors
+        // Oeeez Luxury Mechanical Theme Colors
         oeeez: {
-          red: {
-            50: "#fef2f2",
-            100: "#fee2e2",
-            200: "#fecaca",
-            300: "#fca5a5",
-            400: "#f87171",
-            500: "#ef4444",
-            600: "#dc2626",
-            700: "#c0392b", // Primary brand red
-            800: "#991b1b",
-            900: "#7f1d1d",
+          black: {
+            DEFAULT: "#0a0a0a", // Deep black background
+            light: "#1a1a1a",
+            lighter: "#2a2a2a",
           },
-          teal: {
-            50: "#f0fdfa",
-            100: "#ccfbf1",
-            200: "#99f6e4",
-            300: "#5eead4",
-            400: "#2dd4bf",
-            500: "#14b8a6",
-            600: "#16a085", // Primary brand teal
-            700: "#0f766e",
-            800: "#115e59",
-            900: "#134e4a",
+          crimson: {
+            DEFAULT: "#dc143c", // Bold crimson red
+            light: "#ff1744",
+            dark: "#a80000",
           },
-          coral: {
-            DEFAULT: "#e17055",
-            light: "#fab1a0",
+          steel: {
+            50: "#f8f9fa",
+            100: "#e9ecef",
+            200: "#dee2e6",
+            300: "#ced4da",
+            400: "#adb5bd",
+            500: "#6c757d", // Light gray text
+            600: "#495057",
+            700: "#343a40",
+            800: "#212529",
+            900: "#0a0a0a",
           },
-          navy: {
-            DEFAULT: "#2c3e50",
-            dark: "#1a252f",
+          glossy: {
+            light: "rgba(255, 255, 255, 0.1)",
+            medium: "rgba(255, 255, 255, 0.05)",
+            dark: "rgba(0, 0, 0, 0.3)",
           },
         },
       },
@@ -119,12 +114,30 @@ const config = {
             transform: "translateY(-20px)",
           },
         },
+        "shine": {
+          "0%": {
+            "background-position": "-200% center",
+          },
+          "100%": {
+            "background-position": "200% center",
+          },
+        },
+        "pulse-glow": {
+          "0%, 100%": {
+            "box-shadow": "0 0 20px rgba(220, 20, 60, 0.5)",
+          },
+          "50%": {
+            "box-shadow": "0 0 40px rgba(220, 20, 60, 0.8)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "gradient-shift": "gradient-shift 15s ease infinite",
         "float": "float 6s ease-in-out infinite",
+        "shine": "shine 3s ease-in-out infinite",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
       },
       perspective: {
         "1000": "1000px",
@@ -151,28 +164,36 @@ const config = {
         ".backface-hidden": {
           "backface-visibility": "hidden",
         },
-        ".bg-isometric-cubes": {
+        ".bg-mechanical-grid": {
           backgroundImage: `
-            linear-gradient(30deg, #c0392b 12%, transparent 12.5%, transparent 87%, #c0392b 87.5%, #c0392b),
-            linear-gradient(150deg, #c0392b 12%, transparent 12.5%, transparent 87%, #c0392b 87.5%, #c0392b),
-            linear-gradient(30deg, #c0392b 12%, transparent 12.5%, transparent 87%, #c0392b 87.5%, #c0392b),
-            linear-gradient(150deg, #c0392b 12%, transparent 12.5%, transparent 87%, #c0392b 87.5%, #c0392b),
-            linear-gradient(60deg, #e17055 25%, transparent 25.5%, transparent 75%, #e17055 75%, #e17055),
-            linear-gradient(60deg, #e17055 25%, transparent 25.5%, transparent 75%, #e17055 75%, #e17055)
+            linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
           `,
-          backgroundColor: "#16a085",
-          backgroundSize: "80px 140px",
-          backgroundPosition: "0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px",
+          backgroundColor: "#0a0a0a",
+          backgroundSize: "50px 50px",
         },
-        ".bg-gradient-oeeez": {
-          backgroundImage: "linear-gradient(135deg, #c0392b 0%, #e17055 50%, #16a085 100%)",
-          backgroundSize: "200% 200%",
+        ".bg-glossy-card": {
+          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)",
+          backdropFilter: "blur(10px)",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
         },
-        ".text-gradient-oeeez": {
-          backgroundImage: "linear-gradient(135deg, #c0392b 0%, #e17055 50%, #16a085 100%)",
+        ".bg-gradient-crimson": {
+          backgroundImage: "linear-gradient(135deg, #dc143c 0%, #a80000 100%)",
+        },
+        ".bg-gradient-steel": {
+          backgroundImage: "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)",
+        },
+        ".text-gradient-crimson": {
+          backgroundImage: "linear-gradient(135deg, #dc143c 0%, #ff1744 100%)",
           "-webkit-background-clip": "text",
           "-webkit-text-fill-color": "transparent",
           "background-clip": "text",
+        },
+        ".glossy-shadow": {
+          boxShadow: "0 8px 32px 0 rgba(220, 20, 60, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)",
+        },
+        ".glossy-shadow-lg": {
+          boxShadow: "0 12px 48px 0 rgba(220, 20, 60, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)",
         },
       }
       addUtilities(newUtilities)

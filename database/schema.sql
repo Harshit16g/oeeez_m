@@ -28,10 +28,10 @@ CREATE TABLE IF NOT EXISTS public.users (
   -- Provider-specific fields
   is_verified BOOLEAN DEFAULT FALSE,
   verification_date TIMESTAMPTZ,
-  provider_category_id INTEGER, -- Primary category for providers
-  hourly_rate DECIMAL(10,2),
+  provider_category_id INTEGER REFERENCES public.categories(id) ON DELETE SET NULL, -- Primary category for providers
+  hourly_rate DECIMAL(10,2) CHECK (hourly_rate IS NULL OR hourly_rate >= 0),
   availability TEXT DEFAULT 'available' CHECK (availability IN ('available', 'busy', 'unavailable')),
-  skills TEXT[], -- Array of skills
+  skills TEXT[] -- Array of skills
   
   -- Status and preferences
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'deleted', 'pending')),
@@ -142,13 +142,13 @@ CREATE TABLE IF NOT EXISTS public.provider_profiles (
   refund_policy TEXT,
   
   -- Statistics
-  total_bookings INTEGER DEFAULT 0,
-  completed_bookings INTEGER DEFAULT 0,
-  cancelled_bookings INTEGER DEFAULT 0,
-  average_rating DECIMAL(3,2) DEFAULT 0.00,
-  total_reviews INTEGER DEFAULT 0,
-  response_rate DECIMAL(5,2) DEFAULT 100.00, -- Percentage
-  average_response_time INTEGER, -- In minutes
+  total_bookings INTEGER DEFAULT 0 CHECK (total_bookings >= 0),
+  completed_bookings INTEGER DEFAULT 0 CHECK (completed_bookings >= 0),
+  cancelled_bookings INTEGER DEFAULT 0 CHECK (cancelled_bookings >= 0),
+  average_rating DECIMAL(3,2) DEFAULT 0.00 CHECK (average_rating BETWEEN 0.00 AND 5.00),
+  total_reviews INTEGER DEFAULT 0 CHECK (total_reviews >= 0),
+  response_rate DECIMAL(5,2) DEFAULT 100.00 CHECK (response_rate BETWEEN 0.00 AND 100.00), -- Percentage
+  average_response_time INTEGER CHECK (average_response_time IS NULL OR average_response_time >= 0), -- In minutes
   
   -- Verification
   id_verified BOOLEAN DEFAULT FALSE,
@@ -197,14 +197,16 @@ CREATE TABLE IF NOT EXISTS public.services (
   
   -- Pricing
   price_type TEXT NOT NULL CHECK (price_type IN ('fixed', 'hourly', 'daily', 'project', 'custom')),
-  price DECIMAL(10,2),
-  price_min DECIMAL(10,2), -- For price ranges
-  price_max DECIMAL(10,2),
-  currency TEXT DEFAULT 'USD',
+  price DECIMAL(10,2) CHECK (price IS NULL OR price >= 0),
+  price_min DECIMAL(10,2) CHECK (price_min IS NULL OR price_min >= 0), -- For price ranges
+  price_max DECIMAL(10,2) CHECK (price_max IS NULL OR price_max >= 0),
+  currency TEXT DEFAULT 'USD' CHECK (currency ~ '^[A-Z]{3}$'), -- ISO 4217 format
   
   -- Service details
-  duration INTEGER, -- In minutes
-  capacity INTEGER DEFAULT 1, -- Number of clients that can be served simultaneously
+  duration INTEGER CHECK (duration IS NULL OR duration > 0), -- In minutes
+  capacity INTEGER DEFAULT 1 CHECK (capacity > 0), -- Number of clients that can be served simultaneously
+  
+  CONSTRAINT chk_price_range CHECK (price_min IS NULL OR price_max IS NULL OR price_min <= price_max)
   
   -- Media
   image_urls TEXT[],
@@ -310,13 +312,13 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 CREATE OR REPLACE FUNCTION generate_booking_number()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.booking_number := 'BK-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(NEW.id::TEXT, 6, '0');
+  NEW.booking_number := 'BK-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(nextval('bookings_id_seq')::TEXT, 6, '0');
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER set_booking_number
-AFTER INSERT ON public.bookings
+BEFORE INSERT ON public.bookings
 FOR EACH ROW
 EXECUTE FUNCTION generate_booking_number();
 

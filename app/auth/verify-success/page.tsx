@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Sparkles, ArrowRight } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 
 export default function VerifySuccessPage() {
   const router = useRouter()

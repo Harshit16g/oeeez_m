@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 
 type Theme = "light" | "dark" | "system"
 

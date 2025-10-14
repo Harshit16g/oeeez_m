@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Music } from "lucide-react"
 import { UserProfileDropdown } from "@/components/user-profile-dropdown"
 import { NotificationCenter } from "@/components/notification-center"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 
 export function Navbar() {
   const [isVisible, setIsVisible] = useState(true)

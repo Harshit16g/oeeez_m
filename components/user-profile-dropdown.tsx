@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { User, Settings, CreditCard, Bell, HelpCircle, LogOut, Calendar, Star, Shield, ChevronDown } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 
 export function UserProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false)

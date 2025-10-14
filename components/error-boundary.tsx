@@ -53,7 +53,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </CardHeader>
             <CardContent className="space-y-4 text-center">
               <p className="text-gray-600 dark:text-gray-300">
-                We're sorry, but something unexpected happened. Please try refreshing the page.
+                We&apos;re sorry, but something unexpected happened. Please try refreshing the page.
               </p>
               {this.state.error && (
                 <details className="text-left">

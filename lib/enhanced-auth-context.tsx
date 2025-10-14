@@ -15,7 +15,11 @@ export interface AuthContextType {
   session: Session | null
   loading: boolean
   error: AuthError | null
-  signUp: (email: string, password: string, metadata?: any) => Promise<{ user: User | null; error: AuthError | null }>
+  signUp: (
+    email: string,
+    password: string,
+    metadata?: Record<string, unknown>
+  ) => Promise<{ user: User | null; error: AuthError | null }>
   signIn: (email: string, password: string) => Promise<{ user: User | null; error: AuthError | null }>
   signOut: () => Promise<{ error: AuthError | null }>
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>
@@ -132,7 +136,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
 
   // Sign up function
   const signUp = useCallback(
-    async (email: string, password: string, metadata?: any) => {
+    async (email: string, password: string, metadata?: Record<string, unknown>) => {
       try {
         setLoading(true)
         setError(null)

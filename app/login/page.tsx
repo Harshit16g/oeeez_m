@@ -177,8 +177,9 @@ export default function LoginPage() {
         })
 
         // Track login event
-        if (typeof window !== "undefined" && (window as any).gtag) {
-          ;(window as any).gtag("event", "login", {
+        if (typeof window !== "undefined" && (window as Window & { gtag?: (...args: unknown[]) => void }).gtag) {
+          const gtag = (window as Window & { gtag: (...args: unknown[]) => void }).gtag
+          gtag("event", "login", {
             method: "email",
             user_id: data.user.id,
           })
@@ -188,13 +189,21 @@ export default function LoginPage() {
         const redirectTo = searchParams.get("redirect") || "/artists"
         router.push(redirectTo)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Login error:", error)
 
       let errorMessage = "Login failed. Please try again."
 
-      if (error.message.includes("network")) {
-        errorMessage = "Network error. Please check your connection and try again."
+      if (error instanceof Error) {
+        if (error.message.includes("Invalid login credentials")) {
+          errorMessage = "Invalid email or password. Please check your credentials and try again."
+        } else if (error.message.includes("Email not confirmed")) {
+          errorMessage = "Please verify your email address before logging in."
+        } else if (error.message.includes("network")) {
+          errorMessage = "Network error. Please check your connection and try again."
+        } else {
+          errorMessage = error.message
+        }
       }
 
       setErrors({ general: errorMessage })
@@ -227,11 +236,12 @@ export default function LoginPage() {
       })
 
       if (error) throw error
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Google login error:", error)
+      const message = error instanceof Error ? error.message : "Failed to sign in with Google. Please try again."
       toast({
         title: "Google login failed",
-        description: error.message || "Failed to sign in with Google. Please try again.",
+        description: message,
         variant: "destructive",
       })
     } finally {
@@ -259,11 +269,12 @@ export default function LoginPage() {
         title: "Password reset sent! 📧",
         description: "Check your email for a password reset link.",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Password reset error:", error)
+      const message = error instanceof Error ? error.message : "Failed to send password reset email. Please try again."
       toast({
         title: "Reset failed",
-        description: error.message || "Failed to send password reset email. Please try again.",
+        description: message,
         variant: "destructive",
       })
     } finally {
@@ -432,7 +443,7 @@ export default function LoginPage() {
           </Button>
 
           <div className="text-center text-sm">
-            <span className="text-gray-600 dark:text-gray-400">Don't have an account? </span>
+            <span className="text-gray-600 dark:text-gray-400">Don&apos;t have an account? </span>
             <Link href="/signup" className="text-purple-600 hover:text-purple-700 font-medium">
               Sign up
             </Link>

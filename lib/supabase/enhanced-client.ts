@@ -184,7 +184,7 @@ class EnhancedSupabaseHelpers {
     }
   }
 
-  async createBooking(bookingData: any) {
+  async createBooking(bookingData: Record<string, unknown>) {
     try {
       const { data, error } = await this.supabase.from("bookings").insert(bookingData).select().single()
 

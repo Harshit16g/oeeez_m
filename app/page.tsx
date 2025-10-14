@@ -51,7 +51,7 @@ export default function HomePage() {
             <div className="inline-flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-purple-200 dark:border-purple-700 rounded-full px-6 py-2 mb-8">
               <Sparkles className="h-4 w-4 text-purple-600" />
               <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                India's Premier Artist Booking Platform
+                India&apos;s Premier Artist Booking Platform
               </span>
             </div>
           </AnimatedCard>

@@ -68,7 +68,7 @@ export default function VerifySuccessPage() {
 
           <div className="space-y-4">
             <p className="text-gray-600 dark:text-gray-300">
-              You'll be redirected automatically in <span className="font-bold text-purple-600">{countdown}</span>{" "}
+              You&apos;ll be redirected automatically in <span className="font-bold text-purple-600">{countdown}</span>{" "}
               seconds
             </p>
 
@@ -82,7 +82,7 @@ export default function VerifySuccessPage() {
           </div>
 
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            If you're not redirected automatically, click the button above
+            If you&apos;re not redirected automatically, click the button above
           </div>
         </CardContent>
       </Card>

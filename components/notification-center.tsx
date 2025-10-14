@@ -62,7 +62,7 @@ export function NotificationCenter() {
     return () => {
       cleanup()
     }
-  }, [user])
+  }, [user, supabase])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 

@@ -249,7 +249,7 @@ export default function SignupPage() {
               <Music className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Join Artistly</CardTitle>
+          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Join Oeeez</CardTitle>
           <p className="text-gray-600 dark:text-gray-300">Create your account to get started</p>
         </CardHeader>
 

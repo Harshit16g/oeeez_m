@@ -10,15 +10,15 @@ export function Footer() {
           <div className="col-span-1 md:col-span-2">
             <Link href="/" className="flex items-center gap-2 font-bold text-xl mb-4">
               <Music className="h-6 w-6" />
-              Artistly
+              Oeeez
             </Link>
             <p className="text-gray-300 mb-4 max-w-md">
-              Connecting event planners with amazing performing artists. Find the perfect talent for your next event.
+              Your complete marketplace for services and products across 15+ categories. Connect with verified providers for all your needs.
             </p>
             <div className="flex space-x-4">
               <div className="flex items-center gap-2 text-sm text-gray-300">
                 <Mail className="h-4 w-4" />
-                hello@artistly.com
+                hello@oeeez.online
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-300">
                 <Phone className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; 2024 Artistly. All rights reserved.</p>
+          <p>&copy; 2024 Oeeez. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -51,7 +51,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const steps = [
     {
       id: "welcome",
-      title: "Welcome to Artistly!",
+      title: "Welcome to Oeeez!",
       description: "Let&apos;s get you set up with a personalized experience",
       icon: Sparkles,
     },
@@ -76,7 +76,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     {
       id: "complete",
       title: "You're All Set!",
-      description: "Welcome to the Artistly community",
+      description: "Welcome to the Oeeez community",
       icon: CheckCircle,
     },
   ]
@@ -138,7 +138,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
 
       toast({
-        title: "Welcome to Artistly!",
+        title: "Welcome to Oeeez!",
         description: "Your profile has been set up successfully.",
       })
 
@@ -251,7 +251,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   </div>
                 </div>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Join thousands of event planners and artist managers who trust Artistly to create amazing experiences.
+                  Join thousands of users who trust Oeeez to connect with verified providers across all categories.
                 </p>
               </div>
             )}

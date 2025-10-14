@@ -83,12 +83,12 @@ export default function HelpPage() {
     {
       category: "Technical",
       question: "Which browsers are supported?",
-      answer: "Artistly works best on modern browsers including Chrome, Firefox, Safari, and Edge. Make sure your browser is up to date.",
+      answer: "Oeeez works best on modern browsers including Chrome, Firefox, Safari, and Edge. Make sure your browser is up to date.",
     },
     {
       category: "Technical",
       question: "Is there a mobile app?",
-      answer: "Currently, Artistly is a web application optimized for mobile browsers. A native mobile app is in our roadmap.",
+      answer: "Currently, Oeeez is a web application optimized for mobile browsers. A native mobile app is in our roadmap.",
     },
   ]
 

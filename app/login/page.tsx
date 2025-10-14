@@ -300,7 +300,7 @@ export default function LoginPage() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Welcome Back</CardTitle>
-          <p className="text-gray-600 dark:text-gray-300">Sign in to your Artistly account</p>
+          <p className="text-gray-600 dark:text-gray-300">Sign in to your Oeeez account</p>
         </CardHeader>
 
         <CardContent className="space-y-6">

@@ -141,9 +141,9 @@ export default function HomePage() {
       {/* Features Section */}
       <section className="relative container mx-auto px-4 py-16">
         <AnimatedCard delay={0} animationType="fade-up" className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Why Choose Artistly?</h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            The easiest way to discover and book talented artists for your events
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Why Choose Oeeez?</h2>
+          <p className="text-lg text-gray-200 max-w-2xl mx-auto">
+            Your one-stop marketplace for services, products, and professional talent across all categories
           </p>
         </AnimatedCard>
 
@@ -151,39 +151,39 @@ export default function HomePage() {
           {[
             {
               icon: Music,
-              title: "Diverse Talent",
-              description: "From DJs to live bands, find artists across all genres",
-              gradient: "from-purple-500 to-pink-500",
+              title: "15+ Categories",
+              description: "From performing arts to home services, digital solutions to wellness",
+              gradient: "from-oeeez-red-700 to-oeeez-coral",
             },
             {
               icon: Users,
-              title: "Verified Artists",
-              description: "All artists are verified and professionally managed",
-              gradient: "from-blue-500 to-indigo-500",
+              title: "2,600+ Providers",
+              description: "All providers are verified, rated, and professionally managed",
+              gradient: "from-oeeez-teal-600 to-oeeez-teal-700",
             },
             {
               icon: Calendar,
               title: "Easy Booking",
-              description: "Simple booking process with instant availability",
-              gradient: "from-green-500 to-teal-500",
+              description: "Simple booking and secure communication with instant availability",
+              gradient: "from-oeeez-coral to-oeeez-red-600",
             },
             {
               icon: Star,
               title: "Quality Assured",
-              description: "Read reviews and ratings from previous events",
-              gradient: "from-orange-500 to-red-500",
+              description: "Trending system and reviews to help you find the best providers",
+              gradient: "from-oeeez-teal-700 to-oeeez-navy",
             },
           ].map((feature, index) => (
             <AnimatedCard key={index} delay={200 + index * 100} animationType="fade-up">
-              <div className="group hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full rounded-2xl p-6">
+              <div className="group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-white/10 bg-white/5 backdrop-blur-md h-full rounded-2xl p-6">
                 <div className="text-center h-full flex flex-col">
                   <div
-                    className={`w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300 shadow-lg`}
+                    className={`w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center transform group-hover:rotate-6 transition-transform duration-300 shadow-lg`}
                   >
                     <feature.icon className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="font-bold text-xl mb-4 text-gray-900 dark:text-white">{feature.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed flex-1">{feature.description}</p>
+                  <h3 className="font-bold text-xl mb-4 text-white">{feature.title}</h3>
+                  <p className="text-gray-200 leading-relaxed flex-1">{feature.description}</p>
                 </div>
               </div>
             </AnimatedCard>
@@ -193,16 +193,17 @@ export default function HomePage() {
 
       {/* CTA Section - Only show for non-authenticated users */}
       {!user && (
-        <section className="relative bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 text-white py-16 overflow-hidden">
+        <section className="relative py-16 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-oeeez-red-700/20 via-oeeez-navy/40 to-oeeez-teal-600/20"></div>
           <div className="relative container mx-auto px-4 text-center">
             <div className="max-w-3xl mx-auto">
               <AnimatedCard delay={0} animationType="fade-up">
-                <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Get Started?</h2>
+                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">Ready to Get Started?</h2>
               </AnimatedCard>
 
               <AnimatedCard delay={200} animationType="fade-up">
-                <p className="text-xl text-purple-100 mb-8 max-w-2xl mx-auto">
-                  Join Artistly today and start connecting with amazing performers for your events
+                <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
+                  Join Oeeez today and start connecting with amazing service providers across all categories
                 </p>
               </AnimatedCard>
 
@@ -211,10 +212,10 @@ export default function HomePage() {
                   <Button
                     asChild
                     size="lg"
-                    className="bg-white text-purple-900 hover:bg-gray-100 px-10 py-4 text-lg rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                    className="bg-gradient-oeeez hover:opacity-90 text-white px-10 py-4 text-lg rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 animate-gradient-shift"
                   >
                     <Link href="/signup" className="flex items-center gap-2">
-                      Join Artistly
+                      Join Oeeez
                       <ArrowRight className="h-5 w-5" />
                     </Link>
                   </Button>
@@ -222,7 +223,7 @@ export default function HomePage() {
                     asChild
                     variant="outline"
                     size="lg"
-                    className="border-2 border-white text-white hover:bg-white hover:text-purple-900 px-10 py-4 text-lg rounded-full"
+                    className="border-2 border-oeeez-coral text-white hover:bg-oeeez-coral/20 px-10 py-4 text-lg rounded-full backdrop-blur-md bg-white/10"
                   >
                     <Link href="/login">Sign In</Link>
                   </Button>

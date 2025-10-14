@@ -7,13 +7,13 @@ import { ErrorBoundary } from "@/components/error-boundary"
 import { EnhancedAuthProvider } from "@/lib/enhanced-auth-context"
 
 export const metadata: Metadata = {
-  title: "Artistly - Connect with Creative Professionals",
+  title: "Oeeez - Your Complete Marketplace for Services & Products",
   description:
-    "Discover and book talented artists, photographers, designers, and creative professionals for your projects.",
-  keywords: ["artists", "creative", "booking", "photography", "design", "freelance"],
-  authors: [{ name: "Artistly Team" }],
-  creator: "Artistly",
-  publisher: "Artistly",
+    "Discover and connect with verified providers across 15+ categories. From performing arts to home services, digital solutions to wellness - find trusted professionals on Oeeez.",
+  keywords: ["marketplace", "services", "products", "providers", "booking", "categories", "trending", "oeeez"],
+  authors: [{ name: "Oeeez Team" }],
+  creator: "Oeeez",
+  publisher: "Oeeez",
   formatDetection: {
     email: false,
     address: false,
@@ -21,20 +21,20 @@ export const metadata: Metadata = {
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   openGraph: {
-    title: "Artistly - Connect with Creative Professionals",
+    title: "Oeeez - Your Complete Marketplace for Services & Products",
     description:
-      "Discover and book talented artists, photographers, designers, and creative professionals for your projects.",
+      "Discover and connect with verified providers across 15+ categories. From performing arts to home services, digital solutions to wellness.",
     url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-    siteName: "Artistly",
+    siteName: "Oeeez",
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Artistly - Connect with Creative Professionals",
+    title: "Oeeez - Your Complete Marketplace for Services & Products",
     description:
-      "Discover and book talented artists, photographers, designers, and creative professionals for your projects.",
-    creator: "@artistly",
+      "Discover and connect with verified providers across 15+ categories. Your one-stop marketplace for everything.",
+    creator: "@oeeez",
   },
   robots: {
     index: true,

@@ -59,10 +59,10 @@ export default function VerifySuccessPage() {
           <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
-              <h3 className="font-semibold text-green-900 dark:text-green-300">Welcome to Artistly!</h3>
+              <h3 className="font-semibold text-green-900 dark:text-green-300">Welcome to Oeeez!</h3>
             </div>
             <p className="text-sm text-green-700 dark:text-green-400">
-              Your account is now active and ready to use. You can start exploring amazing artists for your events.
+              Your account is now active and ready to use. You can start exploring amazing providers across all categories.
             </p>
           </div>
 
@@ -76,7 +76,7 @@ export default function VerifySuccessPage() {
               onClick={handleContinue}
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white flex items-center justify-center gap-2"
             >
-              Continue to Artistly
+              Continue to Oeeez
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>

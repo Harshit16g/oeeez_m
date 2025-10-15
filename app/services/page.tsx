@@ -109,7 +109,8 @@ export default function ServicesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [priceFilter, setPriceFilter] = useState<string>("all")
-  const [services, setServices] = useState(mockServices)
+  const [allServices, setAllServices] = useState(mockServices) // Canonical source
+  const [services, setServices] = useState(mockServices) // Filtered results
 
   // Initialize services - in production, this would fetch from API
   useEffect(() => {
@@ -119,15 +120,15 @@ export default function ServicesPage() {
         // TODO: Replace with actual API call when backend is ready
         // const response = await fetch('/api/services')
         // const data = await response.json()
-        // setServices(data)
+        // setAllServices(data)
         
         // For now, using mock data with simulated delay
         await new Promise(resolve => setTimeout(resolve, 500))
-        setServices(mockServices)
+        setAllServices(mockServices)
       } catch (error) {
         console.error('Error loading services:', error)
         // Keep mock data on error
-        setServices(mockServices)
+        setAllServices(mockServices)
       } finally {
         setLoading(false)
       }
@@ -137,7 +138,8 @@ export default function ServicesPage() {
 
   // Filter services based on search and filters
   useEffect(() => {
-    let filtered = mockServices
+    // Start from canonical loaded data
+    let filtered = allServices
 
     // Search filter
     if (searchTerm) {
@@ -173,7 +175,7 @@ export default function ServicesPage() {
     }
 
     setServices(filtered)
-  }, [searchTerm, selectedCategory, priceFilter])
+  }, [searchTerm, selectedCategory, priceFilter, allServices])
 
   const formatPrice = (service: typeof mockServices[0]) => {
     // For hourly pricing, show "/hr" suffix

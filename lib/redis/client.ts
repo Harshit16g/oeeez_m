@@ -94,8 +94,37 @@ export const CacheTTL = {
 /**
  * Redis SCAN batch size - configurable via environment variable
  * Default: 100 keys per iteration
+ * Validates and clamps to reasonable range (1-10000)
  */
-const REDIS_SCAN_BATCH_SIZE = Number(process.env.REDIS_SCAN_BATCH_SIZE) || 100
+const REDIS_SCAN_BATCH_SIZE = (() => {
+  const envValue = process.env.REDIS_SCAN_BATCH_SIZE
+  const defaultValue = 100
+  const maxValue = 10000
+  
+  if (!envValue) {
+    return defaultValue
+  }
+  
+  const parsed = parseInt(envValue, 10)
+  
+  // Validate: must be finite positive integer >= 1
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    console.warn(
+      `Invalid REDIS_SCAN_BATCH_SIZE: "${envValue}". Must be a positive integer >= 1. Falling back to default: ${defaultValue}`
+    )
+    return defaultValue
+  }
+  
+  // Clamp to max value to prevent excessive memory usage
+  if (parsed > maxValue) {
+    console.warn(
+      `REDIS_SCAN_BATCH_SIZE: ${parsed} exceeds maximum ${maxValue}. Clamping to ${maxValue}`
+    )
+    return maxValue
+  }
+  
+  return parsed
+})()
 
 /**
  * Cache helper functions

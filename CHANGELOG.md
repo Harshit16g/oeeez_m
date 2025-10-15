@@ -1,9 +1,102 @@
 # Changelog
 
-All notable changes to the Artistly project will be documented in this file.
+All notable changes to the Oeeez Marketplace project will be documented in this file.
+
+> **Note:** Project was previously named "Artistly" and has been rebranded to "Oeeez Marketplace" to better reflect its multipurpose marketplace positioning.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.3.0] - 2025-10-15
+
+### Phase 2 - Marketplace Expansion & Realtime Foundation ✅
+
+#### Added - Redis Caching Infrastructure
+- **Redis Client** (`lib/redis/client.ts`) - Complete caching layer implementation
+  - ioredis integration with graceful degradation
+  - Cache helper functions (get, set, delete, invalidatePattern, getOrSet)
+  - Predefined cache keys for consistency (userProfile, userSession, userBookings, etc.)
+  - TTL management with SHORT (60s), MEDIUM (5min), LONG (1hr), DAY (24hr)
+  - Pattern-based cache invalidation
+  - Support for local Redis and Upstash Cloud
+  - Error handling with fallback behavior
+
+- **Redis Documentation** (`lib/redis/README.md`) - Comprehensive caching documentation
+  - Setup instructions for local and production environments
+  - Usage examples and best practices
+  - Cache key naming conventions
+  - TTL recommendations
+  - Troubleshooting guide
+  - Integration with PostgreSQL triggers
+
+#### Added - Service Listing System
+- **Services Page** (`/services`) - Browse and filter marketplace services
+  - Grid layout with service cards showing images, ratings, and pricing
+  - Advanced search across title, description, and category
+  - Filter by category (Visual Arts, Digital Services, Performing Arts, etc.)
+  - Filter by price range (Under $100, $100-$1,000, $1,000+)
+  - Service details: duration, location, views, featured badges
+  - Price formatting for different pricing types (hourly, fixed, project, range)
+  - Integration with existing database schema (services table)
+  - Next.js Image optimization for service images
+  - Responsive design with dark mode support
+
+#### Added - Review & Rating System
+- **Reviews Page** (`/reviews`) - Comprehensive review management
+  - View all reviews (given and received)
+  - Filter tabs: All Reviews, Reviews Given, Reviews Received
+  - Summary statistics: Average rating, total reviews, helpful votes
+  - Detailed rating breakdowns (quality, communication, professionalism, value)
+  - Review cards with:
+    - Reviewer avatar and verified purchase badges
+    - Star ratings (1-5 scale)
+    - Review title and detailed comment
+    - Service name and booking date
+    - Social features (helpful votes, reply functionality)
+  - Integration with bookings system
+  - Responsive layout with dark mode
+
+#### Updated - Navigation
+- **Navbar** (`components/navbar.tsx`) - Enhanced navigation menu
+  - Added "Services" link for browsing marketplace services
+  - Added "Reviews" link for review management
+  - Removed "Help" link from main navigation (still accessible via footer)
+  - Active link highlighting for current page
+  - Maintained responsive design
+
+#### Updated - Documentation
+- **ROADMAP.md** - Phase 2 completion status
+  - Marked completed items: Redis caching, Service listing, Reviews, Profile management, Bookings, Provider pages, Dashboard
+  - Remaining: SpacetimeDB integration (moved to Phase 3)
+  
+- **PROJECT_SUMMARY.md** - Comprehensive project update
+  - Added Phase 2 completion section
+  - Updated feature list with new capabilities
+  - Added Redis infrastructure details
+  - Updated statistics (11,000+ lines of code)
+  - Updated user flows with Services and Reviews
+  - Enhanced performance metrics section
+
+- **.env.example** - Redis configuration
+  - Added comprehensive Redis URL examples
+  - Local development: `redis://localhost:6379`
+  - Production with password: `redis://:password@hostname:6379`
+  - Upstash Redis Cloud: `rediss://default:token@endpoint.upstash.io:6379`
+
+#### Technical Improvements
+- **Dependencies** - Added Redis support
+  - `ioredis@^5.x` - Redis client for Node.js
+  - `@types/ioredis@^5.x` - TypeScript definitions
+  
+- **Build System** - Verified successful builds
+  - All new pages compile without errors
+  - Linting passes for new code
+  - Next.js Image component used for optimization
+
+### Fixed
+- Removed unused imports in navbar (Music icon)
+- Fixed linting warnings in new pages
+- Optimized service images with Next.js Image component
 
 ## [Unreleased]
 

@@ -162,7 +162,7 @@ Phase	Goals
 📊 Admin/Analytics	Global admin panel, analytics, moderation tools
 
 
-![ROADMAP.md →](./ROADMAP.md)
+[ROADMAP.md →](./ROADMAP.md)
 ---
 
 🧰 Development Scripts

@@ -20,14 +20,14 @@ A structured roadmap for the evolution of **Oeeez.online** — a modular, scalab
 
 ## ⚙️ Phase 2 — Marketplace Expansion & Realtime Foundation 🚧 *(In Progress)*
 
-- [ ] Redis caching layer for session & query optimization  
+- [x] Redis caching layer for session & query optimization  
 - [ ] SpacetimeDB integration for real-time marketplace data  
-- [ ] Profile management and settings page  
-- [ ] Service listing and categorization  
-- [ ] Booking/order management  
-- [ ] Review & rating foundation  
-- [ ] Provider public pages  
-- [ ] Optimized dashboard design  
+- [x] Profile management and settings page  
+- [x] Service listing and categorization  
+- [x] Booking/order management  
+- [x] Review & rating foundation  
+- [x] Provider public pages  
+- [x] Optimized dashboard design  
 
 ---
 

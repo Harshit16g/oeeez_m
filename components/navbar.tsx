@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Music } from "lucide-react"
 import { UserProfileDropdown } from "@/components/user-profile-dropdown"
 import { NotificationCenter } from "@/components/notification-center"
 import { useAuth } from "@/lib/enhanced-auth-context"
@@ -77,6 +76,14 @@ export function Navbar() {
               Providers
             </a>
             <a
+              href="/services"
+              className={`font-semibold text-sm text-oeeez-steel-400 hover:text-white transition-colors duration-300 ${
+                pathname === "/services" ? "text-oeeez-crimson" : ""
+              }`}
+            >
+              Services
+            </a>
+            <a
               href="/bookings"
               className={`font-semibold text-sm text-oeeez-steel-400 hover:text-white transition-colors duration-300 ${
                 pathname === "/bookings" ? "text-oeeez-crimson" : ""
@@ -85,12 +92,12 @@ export function Navbar() {
               Bookings
             </a>
             <a
-              href="/help"
+              href="/reviews"
               className={`font-semibold text-sm text-oeeez-steel-400 hover:text-white transition-colors duration-300 ${
-                pathname === "/help" ? "text-oeeez-crimson" : ""
+                pathname === "/reviews" ? "text-oeeez-crimson" : ""
               }`}
             >
-              Help
+              Reviews
             </a>
           </div>
         )}

@@ -79,8 +79,8 @@ eventsbyaria.com (mapped via custom CNAME)
 📚 Quick Start
 
 # Clone
-git clone https://github.com/Harshit16g/Artistlydotcom.git
-cd Artistlydotcom
+git clone https://github.com/Harshit16g/oeeez_m.git
+cd oeeez_m
 
 # Install
 npm install

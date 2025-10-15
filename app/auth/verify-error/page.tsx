@@ -45,10 +45,11 @@ export default function VerifyErrorPage() {
         title: "Verification email sent!",
         description: "Please check your email for the verification link.",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to resend verification email"
       toast({
         title: "Failed to resend email",
-        description: error.message,
+        description: message,
         variant: "destructive",
       })
     } finally {

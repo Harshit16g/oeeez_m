@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Sparkles, ArrowRight } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 
 export default function VerifySuccessPage() {
   const router = useRouter()
@@ -59,16 +59,16 @@ export default function VerifySuccessPage() {
           <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
-              <h3 className="font-semibold text-green-900 dark:text-green-300">Welcome to Artistly!</h3>
+              <h3 className="font-semibold text-green-900 dark:text-green-300">Welcome to Oeeez!</h3>
             </div>
             <p className="text-sm text-green-700 dark:text-green-400">
-              Your account is now active and ready to use. You can start exploring amazing artists for your events.
+              Your account is now active and ready to use. You can start exploring amazing providers across all categories.
             </p>
           </div>
 
           <div className="space-y-4">
             <p className="text-gray-600 dark:text-gray-300">
-              You'll be redirected automatically in <span className="font-bold text-purple-600">{countdown}</span>{" "}
+              You&apos;ll be redirected automatically in <span className="font-bold text-purple-600">{countdown}</span>{" "}
               seconds
             </p>
 
@@ -76,13 +76,13 @@ export default function VerifySuccessPage() {
               onClick={handleContinue}
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white flex items-center justify-center gap-2"
             >
-              Continue to Artistly
+              Continue to Oeeez
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
 
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            If you're not redirected automatically, click the button above
+            If you&apos;re not redirected automatically, click the button above
           </div>
         </CardContent>
       </Card>

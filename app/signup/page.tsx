@@ -165,22 +165,25 @@ export default function SignupPage() {
         setShowVerificationMessage(true)
 
         // Track signup event
-        if (typeof window !== "undefined" && (window as any).gtag) {
-          ;(window as any).gtag("event", "sign_up", {
+        if (typeof window !== "undefined" && (window as Window & { gtag?: (...args: unknown[]) => void }).gtag) {
+          const gtag = (window as Window & { gtag: (...args: unknown[]) => void }).gtag
+          gtag("event", "sign_up", {
             method: "email",
             user_id: data.user.id,
           })
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Signup error:", error)
 
       let errorMessage = "Failed to create account. Please try again."
 
-      if (error.message.includes("rate limit")) {
-        errorMessage = "Too many signup attempts. Please wait a moment and try again."
-      } else if (error.message.includes("invalid email")) {
-        errorMessage = "Please enter a valid email address."
+      if (error instanceof Error) {
+        if (error.message.includes("rate limit")) {
+          errorMessage = "Too many signup attempts. Please wait a moment and try again."
+        } else if (error.message.includes("invalid email")) {
+          errorMessage = "Please enter a valid email address."
+        }
       }
 
       setErrors({ general: errorMessage })
@@ -212,11 +215,12 @@ export default function SignupPage() {
       })
 
       if (error) throw error
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Google signup error:", error)
+      const message = error instanceof Error ? error.message : "Failed to sign up with Google. Please try again."
       toast({
         title: "Google signup failed",
-        description: error.message || "Failed to sign up with Google. Please try again.",
+        description: message,
         variant: "destructive",
       })
     } finally {
@@ -245,7 +249,7 @@ export default function SignupPage() {
               <Music className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Join Artistly</CardTitle>
+          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Join Oeeez</CardTitle>
           <p className="text-gray-600 dark:text-gray-300">Create your account to get started</p>
         </CardHeader>
 
@@ -258,7 +262,7 @@ export default function SignupPage() {
                 </div>
                 <h3 className="font-semibold text-green-900 dark:text-green-300 mb-2">Check Your Email!</h3>
                 <p className="text-sm text-green-700 dark:text-green-400">
-                  We've sent a verification link to <strong>{formData.email}</strong>. Please click the link to verify
+                  We&apos;ve sent a verification link to <strong>{formData.email}</strong>. Please click the link to verify
                   your account before signing in.
                 </p>
                 <p className="text-xs text-green-600 dark:text-green-500 mt-2">

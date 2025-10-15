@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 import { useToast } from "@/hooks/use-toast"
 import {
   User,
@@ -51,8 +51,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const steps = [
     {
       id: "welcome",
-      title: "Welcome to Artistly!",
-      description: "Let's get you set up with a personalized experience",
+      title: "Welcome to Oeeez!",
+      description: "Let&apos;s get you set up with a personalized experience",
       icon: Sparkles,
     },
     {
@@ -76,7 +76,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     {
       id: "complete",
       title: "You're All Set!",
-      description: "Welcome to the Artistly community",
+      description: "Welcome to the Oeeez community",
       icon: CheckCircle,
     },
   ]
@@ -121,7 +121,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           console.warn("Database function failed, falling back to direct update:", rpcError)
           throw rpcError
         }
-      } catch (rpcError) {
+      } catch {
         // Fallback to direct profile update
         console.log("Using fallback profile update method")
         await updateProfile({
@@ -129,7 +129,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           phone: formData.phone,
           company: formData.company,
           location: formData.location,
-          role: formData.role as any,
+          role: formData.role as "event_planner" | "artist_manager" | "admin",
           bio: formData.bio,
           avatar_url: formData.avatar,
           onboarding_completed: true,
@@ -138,7 +138,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
 
       toast({
-        title: "Welcome to Artistly!",
+        title: "Welcome to Oeeez!",
         description: "Your profile has been set up successfully.",
       })
 
@@ -148,9 +148,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setTimeout(() => {
         onComplete()
       }, 2000)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Onboarding error:", error)
-      setError(error.message || "Failed to complete onboarding. Please try again.")
+      const message = error instanceof Error ? error.message : "Failed to complete onboarding. Please try again."
+      setError(message)
       toast({
         title: "Error",
         description: "Failed to complete onboarding. Please try again.",
@@ -171,7 +172,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           title: "Profile picture uploaded",
           description: "Your profile picture has been uploaded successfully.",
         })
-      } catch (error) {
+      } catch {
         toast({
           title: "Upload failed",
           description: "Failed to upload profile picture. Please try again.",
@@ -250,7 +251,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   </div>
                 </div>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Join thousands of event planners and artist managers who trust Artistly to create amazing experiences.
+                  Join thousands of users who trust Oeeez to connect with verified providers across all categories.
                 </p>
               </div>
             )}
@@ -388,7 +389,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Profile Complete!</h3>
                   <p className="text-gray-600 dark:text-gray-300">
-                    You're now ready to start connecting with amazing artists and creating unforgettable events.
+                    You&apos;re now ready to start connecting with amazing artists and creating unforgettable events.
                   </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">

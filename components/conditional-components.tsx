@@ -1,5 +1,5 @@
 "use client"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 
 export function ConditionalComponents() {
   const { user, loading } = useAuth()

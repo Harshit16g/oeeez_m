@@ -201,6 +201,13 @@ export default function DashboardPage() {
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/categories")}>
+              <CardHeader className="text-center">
+                <CardTitle className="text-lg">Browse Categories</CardTitle>
+                <CardDescription>Explore all marketplace categories</CardDescription>
+              </CardHeader>
+            </Card>
+
             <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/artists")}>
               <CardHeader className="text-center">
                 <CardTitle className="text-lg">Browse Artists</CardTitle>
@@ -208,6 +215,16 @@ export default function DashboardPage() {
               </CardHeader>
             </Card>
 
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/bookings")}>
+              <CardHeader className="text-center">
+                <CardTitle className="text-lg">View Bookings</CardTitle>
+                <CardDescription>Manage your appointments</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+
+          {/* Additional Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={handleEditProfile}>
               <CardHeader className="text-center">
                 <CardTitle className="text-lg">Edit Profile</CardTitle>
@@ -215,10 +232,17 @@ export default function DashboardPage() {
               </CardHeader>
             </Card>
 
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/profile")}>
               <CardHeader className="text-center">
-                <CardTitle className="text-lg">View Bookings</CardTitle>
-                <CardDescription>Manage your appointments</CardDescription>
+                <CardTitle className="text-lg">View Public Profile</CardTitle>
+                <CardDescription>See how others see your profile</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push("/help")}>
+              <CardHeader className="text-center">
+                <CardTitle className="text-lg">Help & Support</CardTitle>
+                <CardDescription>Get help with your account</CardDescription>
               </CardHeader>
             </Card>
           </div>

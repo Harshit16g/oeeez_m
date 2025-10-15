@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Bell, X, Calendar, CreditCard, Star, AlertCircle, CheckCircle2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 import type { SupabaseChannel } from "@supabase/supabase-js"
 import { fetchNotifications } from "@/lib/supabase/notifications" // Declare the fetchNotifications variable
 
@@ -62,7 +62,7 @@ export function NotificationCenter() {
     return () => {
       cleanup()
     }
-  }, [user])
+  }, [user, supabase])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 

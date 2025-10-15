@@ -16,7 +16,7 @@ interface BookingFormProps {
   artistName: string
 }
 
-export function BookingForm({ artistId, artistName }: BookingFormProps) {
+export function BookingForm({ artistName }: BookingFormProps) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
@@ -267,7 +267,7 @@ export function BookingForm({ artistId, artistName }: BookingFormProps) {
         <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? "Submitting Request..." : "Submit Booking Request"}
         </Button>
-        <p className="text-sm text-gray-500 mt-2 text-center">You'll receive a response within 24 hours</p>
+        <p className="text-sm text-gray-500 mt-2 text-center">You&apos;ll receive a response within 24 hours</p>
       </div>
     </form>
   )

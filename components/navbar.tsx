@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Music } from "lucide-react"
 import { UserProfileDropdown } from "@/components/user-profile-dropdown"
 import { NotificationCenter } from "@/components/notification-center"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/enhanced-auth-context"
 
 export function Navbar() {
   const [isVisible, setIsVisible] = useState(true)
@@ -42,26 +42,55 @@ export function Navbar() {
       } ${
         isHomePage && lastScrollY === 0
           ? "bg-transparent"
-          : "bg-white/95 backdrop-blur-md shadow-md border-b border-gray-200"
+          : "bg-oeeez-black/95 backdrop-blur-md shadow-lg border-b border-oeeez-steel-800"
       }`}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <Music className="h-6 w-6 text-purple-600" />
-          <span className="font-bold text-xl text-purple-600">Artistly</span>
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-crimson opacity-30 blur-lg"></div>
+            <div className="relative w-8 h-8 flex items-center justify-center">
+              <div className="w-6 h-6 bg-gradient-crimson rounded transform rotate-45"></div>
+            </div>
+          </div>
+          <span className="font-bold text-2xl text-gradient-crimson">Oeeez</span>
         </div>
 
-        {/* Navigation (only Artists link for authenticated users) */}
+        {/* Navigation (links for authenticated users) */}
         {user && (
           <div className="flex items-center space-x-6">
             <a
-              href="/artists"
-              className={`font-medium text-sm text-gray-600 hover:text-purple-600 transition-colors duration-300 ${
-                pathname === "/artists" ? "text-purple-600" : ""
+              href="/categories"
+              className={`font-semibold text-sm text-oeeez-steel-400 hover:text-white transition-colors duration-300 ${
+                pathname === "/categories" ? "text-oeeez-crimson" : ""
               }`}
             >
-              Artists
+              Categories
+            </a>
+            <a
+              href="/artists"
+              className={`font-semibold text-sm text-oeeez-steel-400 hover:text-white transition-colors duration-300 ${
+                pathname === "/artists" ? "text-oeeez-crimson" : ""
+              }`}
+            >
+              Providers
+            </a>
+            <a
+              href="/bookings"
+              className={`font-semibold text-sm text-oeeez-steel-400 hover:text-white transition-colors duration-300 ${
+                pathname === "/bookings" ? "text-oeeez-crimson" : ""
+              }`}
+            >
+              Bookings
+            </a>
+            <a
+              href="/help"
+              className={`font-semibold text-sm text-oeeez-steel-400 hover:text-white transition-colors duration-300 ${
+                pathname === "/help" ? "text-oeeez-crimson" : ""
+              }`}
+            >
+              Help
             </a>
           </div>
         )}
@@ -69,7 +98,7 @@ export function Navbar() {
         {/* Auth Section (UserProfileDropdown and NotificationCenter) */}
         <div className="flex items-center space-x-4">
           {loading ? (
-            <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse" />
+            <div className="w-8 h-8 bg-oeeez-steel-800 rounded-full animate-pulse" />
           ) : user ? (
             <>
               <NotificationCenter />
@@ -80,15 +109,15 @@ export function Navbar() {
               <Button
                 variant="ghost"
                 asChild
-                className="text-gray-600 hover:bg-purple-50 hover:text-purple-600 transition-colors duration-300"
+                className="text-oeeez-steel-400 hover:bg-oeeez-black-light hover:text-white transition-colors duration-300"
               >
                 <a href="/login">Sign In</a>
               </Button>
               <Button
                 asChild
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2"
+                className="bg-gradient-crimson hover:opacity-90 text-white px-6 py-2 rounded-lg glossy-shadow"
               >
-                <a href="/signup">Sign Up</a>
+                <a href="/signup">Get Started</a>
               </Button>
             </>
           )}

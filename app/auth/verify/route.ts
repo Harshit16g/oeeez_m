@@ -11,14 +11,20 @@ export async function GET(request: Request) {
   const supabase = await createClient()
 
   if (token && type) {
-    const { error } = await supabase.auth.verifyOtp({ type: type as any, token })
+    const { error } = await supabase.auth.verifyOtp({
+      type: type as "signup" | "magiclink" | "recovery" | "invite" | "email_change" | "sms" | "phone_change",
+      token,
+    })
     if (!error) {
       return NextResponse.redirect(`${origin}/auth/verify-success?next=${encodeURIComponent(next)}`)
     }
   }
 
   if (token_hash && type) {
-    const { error } = await supabase.auth.verifyOtp({ type: type as any, token_hash })
+    const { error } = await supabase.auth.verifyOtp({
+      type: type as "signup" | "magiclink" | "recovery" | "invite" | "email_change" | "sms" | "phone_change",
+      token_hash,
+    })
     if (!error) {
       return NextResponse.redirect(`${origin}/auth/verify-success?next=${encodeURIComponent(next)}`)
     }

@@ -5,14 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 
-## 🌟 Overview
-
----
-
-🛒 Oeeez Marketplace
-
-     
-
+## 🌟 oeeez
 
 ---
 
@@ -169,7 +162,7 @@ Phase	Goals
 📊 Admin/Analytics	Global admin panel, analytics, moderation tools
 
 
-
+![ROADMAP.md →](./ROADMAP.md)
 ---
 
 🧰 Development Scripts

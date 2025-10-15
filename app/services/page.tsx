@@ -105,11 +105,35 @@ const mockServices = [
 
 export default function ServicesPage() {
   const router = useRouter()
-  const [loading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [priceFilter, setPriceFilter] = useState<string>("all")
   const [services, setServices] = useState(mockServices)
+
+  // Initialize services - in production, this would fetch from API
+  useEffect(() => {
+    async function fetchServices() {
+      setLoading(true)
+      try {
+        // TODO: Replace with actual API call when backend is ready
+        // const response = await fetch('/api/services')
+        // const data = await response.json()
+        // setServices(data)
+        
+        // For now, using mock data with simulated delay
+        await new Promise(resolve => setTimeout(resolve, 500))
+        setServices(mockServices)
+      } catch (error) {
+        console.error('Error loading services:', error)
+        // Keep mock data on error
+        setServices(mockServices)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchServices()
+  }, [])
 
   // Filter services based on search and filters
   useEffect(() => {

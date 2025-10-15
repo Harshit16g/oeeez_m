@@ -92,6 +92,12 @@ export const CacheTTL = {
 }
 
 /**
+ * Redis SCAN batch size - configurable via environment variable
+ * Default: 100 keys per iteration
+ */
+const REDIS_SCAN_BATCH_SIZE = Number(process.env.REDIS_SCAN_BATCH_SIZE) || 100
+
+/**
  * Cache helper functions
  */
 export const cache = {
@@ -166,7 +172,7 @@ export const cache = {
           'MATCH',
           pattern,
           'COUNT',
-          100 // Process 100 keys per iteration
+          REDIS_SCAN_BATCH_SIZE
         )
         cursor = result[0]
         const matchedKeys = result[1]

@@ -147,17 +147,42 @@ export const cache = {
   },
 
   /**
-   * Invalidate cache by pattern
+   * Invalidate cache by pattern using cursor-based SCAN
+   * Replaces blocking keys() with efficient SCAN loop
    */
   async invalidatePattern(pattern: string): Promise<boolean> {
     const client = getRedisClient()
     if (!client) return false
 
     try {
-      const keys = await client.keys(pattern)
-      if (keys.length > 0) {
-        await client.del(...keys)
+      const keysToDelete: string[] = []
+      let cursor = '0'
+      
+      // Use SCAN to iterate through keys matching the pattern
+      // This is non-blocking and memory-efficient compared to keys()
+      do {
+        const result = await client.scan(
+          cursor,
+          'MATCH',
+          pattern,
+          'COUNT',
+          100 // Process 100 keys per iteration
+        )
+        cursor = result[0]
+        const matchedKeys = result[1]
+        
+        if (matchedKeys.length > 0) {
+          keysToDelete.push(...matchedKeys)
+        }
+      } while (cursor !== '0')
+      
+      // Delete keys in batches using pipeline for efficiency
+      if (keysToDelete.length > 0) {
+        const pipeline = client.pipeline()
+        keysToDelete.forEach(key => pipeline.unlink(key)) // unlink is async delete
+        await pipeline.exec()
       }
+      
       return true
     } catch (error) {
       console.error('Cache invalidate pattern error:', error)

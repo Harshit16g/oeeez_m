@@ -152,10 +152,16 @@ export default function ServicesPage() {
   }, [searchTerm, selectedCategory, priceFilter])
 
   const formatPrice = (service: typeof mockServices[0]) => {
-    if (service.price) {
-      return `$${service.price}/${service.price_type === "hourly" ? "hr" : service.price_type}`
+    // For hourly pricing, show "/hr" suffix
+    if (service.price && service.price_type === "hourly") {
+      return `$${service.price}/hr`
     }
-    if (service.price_min && service.price_max) {
+    // For other types with price, just show the price
+    if (service.price) {
+      return `$${service.price}`
+    }
+    // For project pricing with range, show min-max
+    if (service.price_type === "project" && service.price_min && service.price_max) {
       return `$${service.price_min} - $${service.price_max}`
     }
     return "Contact for pricing"

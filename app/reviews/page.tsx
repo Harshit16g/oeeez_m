@@ -113,6 +113,21 @@ export default function ReviewsPage() {
     return <Loading />
   }
 
+  // Filter reviews based on current filter state
+  const filteredReviews = reviews.filter((r) => {
+    switch (filter) {
+      case "given":
+        return r.reviewer_name === (profile?.full_name ?? user?.user_metadata?.name ?? "")
+      case "received":
+        return r.reviewee_name === (profile?.full_name ?? user?.user_metadata?.name ?? "")
+      default:
+        return true
+    }
+  })
+
+  // Calculate average rating dynamically from all reviews
+  const avgRating = reviews.length === 0 ? 0 : reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+
   const renderStars = (rating: number) => {
     return (
       <div className="flex gap-1">
@@ -182,11 +197,11 @@ export default function ReviewsPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardDescription>Average Rating</CardDescription>
-                <CardTitle className="text-3xl">4.8</CardTitle>
+                <CardTitle className="text-3xl">{avgRating.toFixed(1)}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex gap-1">
-                  {renderStars(5)}
+                  {renderStars(Math.round(avgRating))}
                 </div>
               </CardContent>
             </Card>
@@ -220,7 +235,7 @@ export default function ReviewsPage() {
 
           {/* Reviews List */}
           <div className="space-y-4">
-            {reviews.map((review) => (
+            {filteredReviews.map((review) => (
               <Card key={review.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -301,7 +316,7 @@ export default function ReviewsPage() {
           </div>
 
           {/* Empty State */}
-          {reviews.length === 0 && (
+          {filteredReviews.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center">
                 <p className="text-gray-600 dark:text-gray-400 mb-4">

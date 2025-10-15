@@ -1,4 +1,4 @@
-# Artistly - Multipurpose Marketplace Platform
+# Oeeez Marketplace
 
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/sl435abs-gmailcoms-projects/v0-create-webapp)
 [![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
@@ -7,7 +7,7 @@
 
 ## 🌟 Overview
 
-Artistly is a comprehensive multipurpose marketplace platform that connects buyers and sellers across various categories. Originally designed for booking performing artists, it's now evolving into a full-featured marketplace supporting anything from services to products.
+oeeez is a comprehensive multipurpose marketplace platform that connects buyers and sellers across various categories. Originally designed for booking performing artists, it's now evolving into a full-featured marketplace supporting anything from services to products.
 
 ### Key Features
 
@@ -349,7 +349,7 @@ For support, email support@artistly.com or join our Slack channel.
 
 ## 🔗 Links
 
-- **Live Demo**: [https://artistlydotcom.vercel.app](https://artistlydotcom.vercel.app)
+- **Live Demo**: [https://oeeez.online](https://oeeez.online)
 - **Documentation**: [Link to full docs]
 - **API Reference**: [Link to API docs]
 - **Issue Tracker**: [GitHub Issues](https://github.com/Harshit16g/Artistlydotcom/issues)

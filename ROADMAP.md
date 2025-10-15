@@ -1,47 +1,45 @@
 
 # 🗺️ Oeeez Marketplace — Roadmap
 
-Welcome to the official roadmap of **Oeeez.online** — a next-gen modular marketplace for services and products.
-
-This roadmap is designed to show you both the **current development focus** and the **planned long-term trajectory**.
+A structured roadmap for the evolution of **Oeeez.online** — a modular, scalable, and real-time marketplace platform built with Next.js, Supabase, Redis, and SpacetimeDB.
 
 ---
 
 ## 🚀 Phase 1 — Foundation ✅ *(Completed)*
 
-- [x] Next.js 14 + TypeScript setup  
-- [x] Supabase integration (Auth + Realtime + Database)  
-- [x] Authentication: Email + Google OAuth  
-- [x] User onboarding flow  
-- [x] Profile setup with avatars  
-- [x] Responsive UI + Dark Mode  
-- [x] Docker + Vercel deployment ready  
-- [x] Basic notifications via Supabase  
+- [x] Next.js + TypeScript core setup  
+- [x] Supabase integration (Auth + Realtime)  
+- [x] Email + Google authentication  
+- [x] User onboarding and profile creation  
+- [x] Tailwind + Radix UI integration  
+- [x] Responsive dark/light mode  
+- [x] Docker + Vercel deployment  
+- [x] Initial notification system  
 
 ---
 
-## ⚙️ Phase 2 — Marketplace Expansion 🚧 *(In Progress)*
+## ⚙️ Phase 2 — Marketplace Expansion & Realtime Foundation 🚧 *(In Progress)*
 
-- [ ] Profile management & settings page  
-- [ ] Booking / order management module  
-- [ ] Marketplace categories page  
-- [ ] Dynamic search & filters  
-- [ ] Public provider profiles  
+- [ ] Redis caching layer for session & query optimization  
+- [ ] SpacetimeDB integration for real-time marketplace data  
+- [ ] Profile management and settings page  
+- [ ] Service listing and categorization  
+- [ ] Booking/order management  
 - [ ] Review & rating foundation  
-- [ ] Improved dashboard for users  
+- [ ] Provider public pages  
+- [ ] Optimized dashboard design  
 
 ---
 
 <details>
-<summary>🧩 Phase 3 — Community & Engagement (Upcoming)</summary>
+<summary>🧩 Phase 3 — Community & Collaboration Layer (Upcoming)</summary>
 
-- [ ] Integrated community hub  
-- [ ] Commenting, reviews, and reactions  
-- [ ] Real-time chat system (buyer ↔ provider)  
-- [ ] Notifications center  
-- [ ] User-level moderation tools  
-- [ ] Report & dispute management system  
-- [ ] Enhanced booking flow with offers/negotiation  
+- [ ] SpacetimeDB-based live community feed  
+- [ ] Commenting, reactions, and discussions  
+- [ ] Chat system (buyer ↔ provider)  
+- [ ] Notification and activity center  
+- [ ] Report/dispute management  
+- [ ] Moderation tools for admins  
 </details>
 
 ---
@@ -50,22 +48,21 @@ This roadmap is designed to show you both the **current development focus** and 
 <summary>💰 Phase 4 — Monetization & Payments</summary>
 
 - [ ] Razorpay / Stripe integration  
-- [ ] Subscription models for providers  
+- [ ] Provider subscription tiers  
 - [ ] Revenue analytics dashboard  
-- [ ] Tax/GST handling  
-- [ ] Payout management  
+- [ ] Payouts & tax/GST handling  
 </details>
 
 ---
 
 <details>
-<summary>🏪 Phase 5 — Self-Hosting & Multi-Domain Scaling</summary>
+<summary>🏪 Phase 5 — Self-Hosting & Scaling</summary>
 
-- [ ] Custom subdomain provisioning (`shopname.oeeez.online`)  
-- [ ] Organization-level dashboards  
-- [ ] Admin analytics panel  
-- [ ] Domain linking automation  
-- [ ] API endpoints for external shops  
+- [ ] Multi-tenant subdomains (`shopname.oeeez.online`)  
+- [ ] Organization dashboards  
+- [ ] Admin analytics and control center  
+- [ ] Redis cluster for distributed caching  
+- [ ] Auto-provisioned domains via API  
 </details>
 
 ---
@@ -73,19 +70,34 @@ This roadmap is designed to show you both the **current development focus** and 
 <details>
 <summary>📊 Phase 6 — Analytics, Insights & Governance</summary>
 
-- [ ] Full admin console  
-- [ ] Community statistics and sentiment tracking  
-- [ ] Fraud detection and trust scoring  
-- [ ] Advanced reporting and exports  
-- [ ] Transparency dashboard for users  
+- [ ] Platform-wide data insights  
+- [ ] Fraud and abuse detection  
+- [ ] Sentiment analysis using SpacetimeDB streams  
+- [ ] Trust and reputation scoring  
+- [ ] Transparency dashboard  
 </details>
+
+---
+
+## 🧠 Technical Notes
+
+### Redis Caching Strategy
+- Used for session storage, user data, and marketplace query caching  
+- Supports both **local dev** and **Redis Cloud (Upstash / self-hosted)**  
+- Integrated via `@upstash/redis` or `ioredis`  
+
+### SpacetimeDB Integration
+- Enables **multi-user live sessions** and **marketplace collaboration**  
+- Stores ephemeral data for real-time updates  
+- Event-driven sync between Supabase → SpacetimeDB → Client  
+- Ideal for feeds, chats, and presence tracking  
 
 ---
 
 ## 🧩 Contribution Roadmap
 
-Want to help shape Oeeez?  
-Check [`CONTRIBUTING.md`](./CONTRIBUTING.md) — contributors can pick a **phase milestone** and join in development.
+Want to contribute?  
+Check [`CONTRIBUTING.md`](./CONTRIBUTING.md) to pick a **phase milestone**.
 
 ---
 

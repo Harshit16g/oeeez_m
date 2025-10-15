@@ -68,17 +68,43 @@ export async function closeRedisClient(): Promise<void> {
 
 /**
  * Cache key generators for consistent naming
+ * Aligned with database schema relationships: user → service → booking → review
+ * Format: oeeez:{entity_type}:{entity_id} (matches get_cache_key function in database)
  */
 export const CacheKeys = {
-  userProfile: (userId: string) => `user:profile:${userId}`,
-  userSession: (sessionId: string) => `session:${sessionId}`,
-  userBookings: (userId: string) => `user:bookings:${userId}`,
-  userNotifications: (userId: string) => `user:notifications:${userId}`,
-  popularArtists: () => 'artists:popular',
-  categoryProviders: (categorySlug: string) => `category:${categorySlug}:providers`,
-  dashboardStats: (userId: string) => `dashboard:stats:${userId}`,
-  userReviews: (userId: string) => `user:reviews:${userId}`,
-  serviceDetail: (serviceId: string) => `service:${serviceId}`,
+  // User caches
+  userProfile: (userId: string) => `oeeez:user:profile:${userId}`,
+  userSession: (sessionId: string) => `oeeez:session:${sessionId}`,
+  userBookings: (userId: string) => `oeeez:user:bookings:${userId}`,
+  userNotifications: (userId: string) => `oeeez:user:notifications:${userId}`,
+  userReviews: (userId: string) => `oeeez:user:reviews:${userId}`,
+  userServices: (userId: string) => `oeeez:user:services:${userId}`,
+  
+  // Provider caches
+  providerProfile: (providerId: string) => `oeeez:provider:profile:${providerId}`,
+  
+  // Service caches
+  serviceDetail: (serviceId: string) => `oeeez:service:detail:${serviceId}`,
+  serviceReviews: (serviceId: string) => `oeeez:service:reviews:${serviceId}`,
+  serviceBookings: (serviceId: string) => `oeeez:service:bookings:${serviceId}`,
+  
+  // Category caches
+  categoryProviders: (categorySlug: string) => `oeeez:category:${categorySlug}:providers`,
+  categoryServices: (categoryId: string) => `oeeez:category:services:${categoryId}`,
+  
+  // Booking caches
+  bookingDetail: (bookingId: string) => `oeeez:booking:detail:${bookingId}`,
+  
+  // Review caches
+  reviewDetail: (reviewId: string) => `oeeez:review:detail:${reviewId}`,
+  
+  // Aggregated data caches
+  serviceRatings: (serviceId: string) => `oeeez:service:ratings:${serviceId}`,
+  providerRatings: (providerId: string) => `oeeez:provider:ratings:${providerId}`,
+  dashboardStats: (userId: string) => `oeeez:dashboard:stats:${userId}`,
+  
+  // Marketplace caches (legacy compatibility)
+  popularArtists: () => 'oeeez:artists:popular',
 }
 
 /**
